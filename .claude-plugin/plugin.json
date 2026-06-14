@@ -1,0 +1,10 @@
+{
+  "name": "cosmobar",
+  "version": "0.1.0",
+  "description": "Fast, dependency-light status line for Claude Code — installs the binary and guides setup.",
+  "author": { "name": "oleksbard" },
+  "homepage": "https://github.com/oleksbard/cosmobar",
+  "repository": "https://github.com/oleksbard/cosmobar",
+  "license": "MIT",
+  "keywords": ["statusline", "claude-code", "cli"]
+}

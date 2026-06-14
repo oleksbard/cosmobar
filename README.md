@@ -22,6 +22,17 @@ cosmobar init
 config to `~/.config/cosmobar/config.toml`, and installs the guided-setup
 skill. Restart Claude Code (or send a message) to see the status line.
 
+## Install from inside Claude Code
+
+Prefer to stay in Claude Code? cosmobar ships as a Claude Code plugin. One time:
+
+```sh
+/plugin marketplace add oleksbard/cosmobar
+/plugin install cosmobar@cosmobar
+```
+
+Then say **"install cosmobar"** (or run `/cosmobar:install`). Claude downloads the binary with the same installer, wires it into Claude Code, and walks you through setup — no shell command to copy. macOS/Linux only.
+
 ## Guided setup inside Claude Code
 
 `init` (or `cosmobar install-skill`) drops a `/cosmobar` skill into

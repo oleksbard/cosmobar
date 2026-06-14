@@ -1,0 +1,14 @@
+{
+  "name": "cosmobar",
+  "owner": {
+    "name": "oleksbard",
+    "url": "https://github.com/oleksbard"
+  },
+  "plugins": [
+    {
+      "name": "cosmobar",
+      "source": ".",
+      "description": "Install and configure the cosmobar status line for Claude Code."
+    }
+  ]
+}
