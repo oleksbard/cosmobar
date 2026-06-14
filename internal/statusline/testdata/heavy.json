@@ -1,0 +1,8 @@
+{
+  "session_id": "abc-123",
+  "model": {"display_name": "Opus"},
+  "workspace": {"current_dir": "/Users/me/projects/cosmobar"},
+  "cost": {"total_cost_usd": 0.12, "total_duration_ms": 723000, "total_lines_added": 156, "total_lines_removed": 23},
+  "context_window": {"used_percentage": 42, "context_window_size": 200000},
+  "output_style": {"name": "default"}
+}

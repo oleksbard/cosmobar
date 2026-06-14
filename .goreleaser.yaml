@@ -1,0 +1,31 @@
+version: 2
+project_name: cosmobar
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: cosmobar
+    main: .
+    binary: cosmobar
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: cosmobar
+    formats: [tar.gz]
+    # Produces e.g. cosmobar_darwin_arm64.tar.gz — must match release.AssetName.
+    name_template: "cosmobar_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: oleksbard
+    name: cosmobar
