@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/oleksbard/cosmobar/internal/config"
+	"github.com/oleksbard/cosmobar/internal/render"
 	"github.com/oleksbard/cosmobar/internal/session"
 )
 
@@ -52,5 +53,17 @@ func TestClockFormats(t *testing.T) {
 	c.Clock.Format = "off"
 	if _, ok := r.Render(ctxWith(&session.Session{}, c, now)); ok {
 		t.Error("clock off should hide")
+	}
+}
+
+func TestEffectivePartsFallsBackToText(t *testing.T) {
+	s := Segment{Text: "hi", State: render.StateWarn}
+	ps := s.EffectiveParts()
+	if len(ps) != 1 || ps[0].Text != "hi" || ps[0].State != render.StateWarn {
+		t.Errorf("single-part fallback wrong: %+v", ps)
+	}
+	multi := Segment{Parts: []Part{{Text: "+1", State: render.StateOK}, {Text: "-2", State: render.StateCrit}}}
+	if len(multi.EffectiveParts()) != 2 {
+		t.Errorf("multi-part should return its parts")
 	}
 }

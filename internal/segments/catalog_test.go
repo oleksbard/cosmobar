@@ -31,3 +31,22 @@ func TestDefaultOrderMatchesConfigDefault(t *testing.T) {
 		t.Errorf("DefaultOrder() = %v, config default order = %v", got, want)
 	}
 }
+
+func TestEverySegmentHasValidRole(t *testing.T) {
+	valid := map[string]bool{"identity": true, "vcs": true, "metric": true, "gauge": true, "ambient": true}
+	for _, m := range Catalog() {
+		if !valid[m.Role] {
+			t.Errorf("%s has invalid role %q", m.Name, m.Role)
+		}
+	}
+}
+
+func TestMetaByName(t *testing.T) {
+	m, ok := MetaByName("git")
+	if !ok || m.Role != "vcs" {
+		t.Errorf("git role = %q ok=%v", m.Role, ok)
+	}
+	if _, ok := MetaByName("nope"); ok {
+		t.Error("unknown name should not resolve")
+	}
+}

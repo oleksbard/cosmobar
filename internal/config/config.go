@@ -20,18 +20,25 @@ type DirConfig struct {
 	Style string `toml:"style"` // basename | short-path | full
 }
 
+type RateLimitsConfig struct {
+	Show   bool   `toml:"show"`
+	Window string `toml:"window"` // both | 5h | 7d
+}
+
 type Config struct {
-	Theme           string      `toml:"theme"`
-	Order           []string    `toml:"order"`
-	Separator       string      `toml:"separator"`
-	MaxRows         int         `toml:"max_rows"`
-	GaugeWidth      int         `toml:"gauge_width"`
-	GaugeThresholds []int       `toml:"gauge_thresholds"`
-	Glyphs          string      `toml:"glyphs"` // auto | unicode | ascii
-	Clock           ClockConfig `toml:"clock"`
-	Dir             DirConfig   `toml:"dir"`
-	Context         Toggle      `toml:"context"`
-	RateLimits      Toggle      `toml:"rate_limits"`
+	Theme           string           `toml:"theme"`
+	Order           []string         `toml:"order"`
+	Separator       string           `toml:"separator"`
+	MaxRows         int              `toml:"max_rows"`
+	GaugeWidth      int              `toml:"gauge_width"`
+	GaugeThresholds []int            `toml:"gauge_thresholds"`
+	Glyphs          string           `toml:"glyphs"`     // auto | unicode | ascii
+	Style           string           `toml:"style"`      // lean | tick | blocks
+	BlockCaps       string           `toml:"block_caps"` // soft | square
+	Clock           ClockConfig      `toml:"clock"`
+	Dir             DirConfig        `toml:"dir"`
+	Context         Toggle           `toml:"context"`
+	RateLimits      RateLimitsConfig `toml:"rate_limits"`
 }
 
 // Default returns the built-in configuration used when no file is present
@@ -45,10 +52,12 @@ func Default() Config {
 		GaugeWidth:      8,
 		GaugeThresholds: []int{70, 90},
 		Glyphs:          "auto",
+		Style:           "lean",
+		BlockCaps:       "soft",
 		Clock:           ClockConfig{Format: "24h"},
 		Dir:             DirConfig{Style: "basename"},
 		Context:         Toggle{Show: true},
-		RateLimits:      Toggle{Show: false},
+		RateLimits:      RateLimitsConfig{Show: false, Window: "both"},
 	}
 }
 
@@ -62,6 +71,11 @@ func (c Config) Thresholds() (int, int) {
 
 // ASCII reports whether bars/symbols should use ASCII-only characters.
 func (c Config) ASCII() bool { return c.Glyphs == "ascii" }
+
+// BackgroundStyle reports whether the active style paints pill backgrounds.
+func (c Config) BackgroundStyle() bool {
+	return c.Style == "blocks"
+}
 
 // Load returns Default() merged with any values found in the TOML file at
 // path. A missing file yields defaults with no error; a malformed file

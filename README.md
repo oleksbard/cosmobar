@@ -31,9 +31,9 @@ skill. Restart Claude Code (or send a message) to see the status line.
 1. discover the available segments and themes **dynamically** (`cosmobar
    segments --json`, `cosmobar themes --json`) — new segments appear
    automatically, nothing is hardcoded;
-2. ask you which segments to show, plus theme, clock, and glyph style;
+2. ask you which segments to show, plus theme, clock, glyph style, pill style, and rate-limit window;
 3. apply everything with one command:
-   `cosmobar init --force --theme <t> --order <a,b,c> --clock <fmt> --glyphs <g>`;
+   `cosmobar init --force --theme <t> --order <a,b,c> --clock <fmt> --glyphs <g> --style <s> --caps <c> --rate-window <w>`;
 4. show you the result with `cosmobar preview`.
 
 You can re-run it anytime to reconfigure.
@@ -50,6 +50,8 @@ max_rows         = 2
 gauge_width      = 8
 gauge_thresholds = [70, 90]
 glyphs           = "auto"             # auto | unicode | ascii
+style            = "lean"             # lean | tick | blocks
+block_caps       = "soft"             # soft | square  (blocks style only)
 
 [clock]
 format = "24h"
@@ -61,29 +63,36 @@ style = "basename"                    # basename | short-path | full
 show = true
 
 [rate_limits]
-show = false                          # Pro/Max only
+show   = false                        # Pro/Max only
+window = "both"                       # both | 5h | 7d
 ```
 
 Available segments: `dir`, `git`, `model`, `context`, `cost`, `clock`,
 `rate_limits`, `duration`, `lines`, `output_style`, `git_stash`, `effort`.
 Add or reorder them in `order`.
 
-Preview changes without launching Claude Code:
+> `lines` reflects **git working-tree changes** (lines added/removed vs the last commit; untracked files aren't counted) and resets after you commit. In `blocks` style its `+N`/`-N` render as one flush two-tone pill. Every style is font-free — no Nerd Font required.
+>
+> Long branch names are capped at 16 columns (middle ellipsis), and model names are compacted (e.g. `Opus 4.8 (1M context)` → `Opus 4.8(1M)`).
+
+Preview any look without launching Claude Code — `preview` uses the **same render pipeline** as the live status line (only the session/git data is mocked), so what you see is what you get:
 
 ```sh
-cosmobar preview --cols 80 --theme nord
+cosmobar preview --theme nord --style blocks --caps soft --order git,model,context,lines
 ```
+
+Every flag is optional and overrides just that field: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config`.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `cosmobar` | Render the status line (reads JSON from stdin). |
-| `cosmobar init` | Wire into `settings.json`, write config, install the setup skill. Flags: `--theme --order --clock --glyphs --force --no-skill`. |
+| `cosmobar init` | Wire into `settings.json`, write config, install the setup skill. Flags: `--theme --order --clock --glyphs --style --caps --rate-window --force --no-skill`. |
 | `cosmobar install-skill` | Install the `/cosmobar` guided-setup skill into `~/.claude/skills/`. |
 | `cosmobar segments [--json]` | List all available segments (the dynamic catalog). |
 | `cosmobar uninstall [--purge]` | Remove the `statusLine` block from `settings.json` (inverse of `init`). `--purge` also deletes the config file and the binary. |
-| `cosmobar preview` | Render the bundled mock session (`--cols`, `--theme`, `--config`). |
+| `cosmobar preview` | Render the bundled mock session with the live pipeline. Flags: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config`. |
 | `cosmobar doctor` | Offline diagnostics. |
 | `cosmobar themes` | List built-in themes. |
 | `cosmobar upgrade [--check]` | Self-update from the latest GitHub Release. |

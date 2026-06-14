@@ -16,6 +16,9 @@ func cmdInit(args []string) int {
 	order := fs.String("order", "", "comma-separated enabled segments, in display order")
 	clock := fs.String("clock", "", "clock format: 24h | 12h | off")
 	glyphs := fs.String("glyphs", "", "glyphs: auto | unicode | ascii")
+	style := fs.String("style", "", "style: lean | tick | blocks")
+	caps := fs.String("caps", "", "block caps: soft | square")
+	rateWindow := fs.String("rate-window", "", "rate-limit window: both | 5h | 7d")
 	force := fs.Bool("force", false, "overwrite an existing config file")
 	noSkill := fs.Bool("no-skill", false, "do not install the Claude Code setup skill")
 	if err := fs.Parse(args); err != nil {
@@ -55,6 +58,18 @@ func cmdInit(args []string) int {
 	}
 	if *glyphs != "" {
 		cfg.Glyphs = *glyphs
+		customized = true
+	}
+	if *style != "" {
+		cfg.Style = *style
+		customized = true
+	}
+	if *caps != "" {
+		cfg.BlockCaps = *caps
+		customized = true
+	}
+	if *rateWindow != "" {
+		cfg.RateLimits.Window = *rateWindow
 		customized = true
 	}
 	// Keep per-segment toggles consistent with the enabled order.

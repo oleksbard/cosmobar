@@ -13,14 +13,16 @@ import (
 
 // Status is the subset of git state cosmobar renders.
 type Status struct {
-	InRepo    bool
-	Branch    string
-	Ahead     int
-	Behind    int
-	Staged    int
-	Modified  int
-	Untracked int
-	Stashes   int
+	InRepo       bool
+	Branch       string
+	Ahead        int
+	Behind       int
+	Staged       int
+	Modified     int
+	Untracked    int
+	Stashes      int
+	LinesAdded   int
+	LinesRemoved int
 }
 
 const cacheTTL = time.Second
@@ -46,6 +48,20 @@ func collect(dir string) Status {
 	st.InRepo = true
 	if s, err := run(dir, "stash", "list"); err == nil {
 		st.Stashes = countLines(s)
+	}
+	if s, err := run(dir, "diff", "HEAD", "--numstat"); err == nil {
+		st.LinesAdded, st.LinesRemoved = parseNumstat(s)
+	} else {
+		// No HEAD yet (pre-first-commit): count unstaged + staged vs the empty tree.
+		a1, r1 := 0, 0
+		if s, err := run(dir, "diff", "--numstat"); err == nil {
+			a1, r1 = parseNumstat(s)
+		}
+		a2, r2 := 0, 0
+		if s, err := run(dir, "diff", "--cached", "--numstat"); err == nil {
+			a2, r2 = parseNumstat(s)
+		}
+		st.LinesAdded, st.LinesRemoved = a1+a2, r1+r2
 	}
 	return st
 }
@@ -94,11 +110,12 @@ func countLines(s string) int {
 	return strings.Count(s, "\n") + 1
 }
 
-// cache format: InRepo|Ahead|Behind|Staged|Modified|Untracked|Stashes|Branch
+// cache format: InRepo|Ahead|Behind|Staged|Modified|Untracked|Stashes|LinesAdded|LinesRemoved|Branch
 // Branch is last and joined with SplitN so '|' in a branch name is preserved.
 func writeCache(path string, st Status) {
-	line := fmt.Sprintf("%t|%d|%d|%d|%d|%d|%d|%s",
-		st.InRepo, st.Ahead, st.Behind, st.Staged, st.Modified, st.Untracked, st.Stashes, st.Branch)
+	line := fmt.Sprintf("%t|%d|%d|%d|%d|%d|%d|%d|%d|%s",
+		st.InRepo, st.Ahead, st.Behind, st.Staged, st.Modified, st.Untracked, st.Stashes,
+		st.LinesAdded, st.LinesRemoved, st.Branch)
 	_ = os.WriteFile(path, []byte(line), 0o600)
 }
 
@@ -111,21 +128,36 @@ func readCache(path string) (Status, bool) {
 	if err != nil {
 		return Status{}, false
 	}
-	p := strings.SplitN(strings.TrimSpace(string(data)), "|", 8)
-	if len(p) != 8 {
+	p := strings.SplitN(strings.TrimSpace(string(data)), "|", 10)
+	if len(p) != 10 {
 		return Status{}, false
 	}
-	st := Status{
-		InRepo: p[0] == "true",
-		Branch: p[7],
-	}
+	st := Status{InRepo: p[0] == "true", Branch: p[9]}
 	st.Ahead, _ = strconv.Atoi(p[1])
 	st.Behind, _ = strconv.Atoi(p[2])
 	st.Staged, _ = strconv.Atoi(p[3])
 	st.Modified, _ = strconv.Atoi(p[4])
 	st.Untracked, _ = strconv.Atoi(p[5])
 	st.Stashes, _ = strconv.Atoi(p[6])
+	st.LinesAdded, _ = strconv.Atoi(p[7])
+	st.LinesRemoved, _ = strconv.Atoi(p[8])
 	return st, true
+}
+
+func parseNumstat(out string) (added, removed int) {
+	for _, line := range strings.Split(out, "\n") {
+		f := strings.Fields(line)
+		if len(f) < 2 {
+			continue
+		}
+		if n, err := strconv.Atoi(f[0]); err == nil {
+			added += n
+		}
+		if n, err := strconv.Atoi(f[1]); err == nil {
+			removed += n
+		}
+	}
+	return added, removed
 }
 
 func sanitize(s string) string {

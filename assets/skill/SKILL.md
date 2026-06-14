@@ -23,15 +23,20 @@ Configure cosmobar by interviewing the user, then apply the result with one comm
    - **Theme:** offer the names from the themes JSON (default `coral`).
    - **Clock:** `24h`, `12h`, or `off`.
    - **Glyphs (optional):** `auto` (default) or `ascii` — pick `ascii` only if their terminal can't render block characters like `▓░`.
+   - **Style:** `lean` (default), `tick`, or `blocks` (background pills). All styles are font-free — there is no Nerd Font / powerline option.
+   - **Caps — ask ONLY when the chosen style is `blocks`:** `soft` (default) or `square`. For `lean` or `tick`, do **not** ask about caps at all. `AskUserQuestion` can't branch mid-batch, so put **style** in the first batch and send the **caps** question separately afterwards, only if style came back `blocks`.
+   - **Rate-limit window** (only if `rate_limits` is enabled): `both` (default), `5h`, or `7d`.
 
-4. **Apply everything with one command.** This writes `~/.config/cosmobar/config.toml` AND wires `~/.claude/settings.json` (backing up the previous file):
+4. **Apply immediately — no preview step, no confirmation prompt.** As soon as the interview answers are in, write the config and wire it. Don't render a preview and don't put up a "shall I apply this?" question — both are just friction, and applying is reversible. This one command writes `~/.config/cosmobar/config.toml` AND wires `~/.claude/settings.json` (backing up the previous file):
    ```
-   cosmobar init --force --theme <THEME> --order <comma,separated,enabled,segments> --clock <24h|12h|off> --glyphs <auto|ascii>
+   cosmobar init --force --theme <THEME> --order <comma,separated,enabled,segments> --clock <24h|12h|off> --glyphs <auto|ascii> --style <lean|tick|blocks> [--caps <soft|square>] --rate-window <both|5h|7d>
    ```
    - `--order` is the comma-separated list of the segments the user enabled, in their chosen order.
    - `--force` overwrites any existing config (this is a reconfigure).
+   - `--caps` is only relevant when `--style blocks` is used — omit it otherwise.
+   - `--rate-window` is only relevant when `rate_limits` is included in `--order`.
 
-5. **Show the result.** Run `cosmobar preview` and show the user the rendered status line. Tell them it will appear at the bottom of Claude Code on their next message, that they can re-run `/cosmobar` anytime, or hand-edit `~/.config/cosmobar/config.toml` and preview again with `cosmobar preview`.
+5. **Confirm in one line.** Just tell the user it's applied — it appears at the bottom of Claude Code on their next message, they can re-run `/cosmobar` anytime, or hand-edit `~/.config/cosmobar/config.toml` and check it with `cosmobar preview`. Don't ask follow-up questions.
 
 ## Notes
 - Everything is reversible: `cosmobar uninstall` removes the statusline wiring (add `--purge` to also delete the config and the binary).

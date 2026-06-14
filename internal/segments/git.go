@@ -11,6 +11,9 @@ type gitSeg struct{}
 
 func (gitSeg) Name() string { return "git" }
 
+// maxBranchWidth caps long branch names; longer names get a middle ellipsis.
+const maxBranchWidth = 16
+
 func (gitSeg) Render(ctx *Context) (Segment, bool) {
 	st := ctx.Git
 	if !st.InRepo {
@@ -20,6 +23,7 @@ func (gitSeg) Render(ctx *Context) (Segment, bool) {
 	if branch == "" {
 		branch = "(detached)"
 	}
+	branch = render.Truncate(branch, maxBranchWidth)
 	var flags []string
 	if st.Ahead > 0 {
 		flags = append(flags, fmt.Sprintf("↑%d", st.Ahead))

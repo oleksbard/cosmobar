@@ -64,3 +64,20 @@ func TestLoadInvalidTOMLReturnsError(t *testing.T) {
 		t.Errorf("expected parse error")
 	}
 }
+
+func TestDefaultStyleAndRateWindow(t *testing.T) {
+	c := Default()
+	if c.Style != "lean" || c.BlockCaps != "soft" {
+		t.Errorf("style/caps defaults = %q/%q", c.Style, c.BlockCaps)
+	}
+	if c.RateLimits.Window != "both" || c.RateLimits.Show {
+		t.Errorf("rate_limits defaults = %+v", c.RateLimits)
+	}
+	if c.BackgroundStyle() {
+		t.Error("lean is not a background style")
+	}
+	c.Style = "blocks"
+	if !c.BackgroundStyle() {
+		t.Error("blocks is a background style")
+	}
+}

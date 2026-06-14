@@ -8,6 +8,37 @@ import (
 	"time"
 )
 
+func TestParseNumstat(t *testing.T) {
+	a, r := parseNumstat("12\t3\tfile.go\n0\t5\tother.go\n-\t-\tbin.png\n")
+	if a != 12 || r != 8 {
+		t.Errorf("numstat sum = +%d -%d, want +12 -8", a, r)
+	}
+}
+
+func TestLinesResetAfterCommit(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	dir := t.TempDir()
+	mustGit(t, dir, "init", "-b", "main")
+	mustGit(t, dir, "config", "user.email", "t@t")
+	mustGit(t, dir, "config", "user.name", "t")
+	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\n"), 0o644)
+	mustGit(t, dir, "add", "a.txt")
+	mustGit(t, dir, "commit", "-m", "init")
+
+	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\ntwo\nthree\n"), 0o644)
+	st := collect(dir)
+	if st.LinesAdded != 2 || st.LinesRemoved != 0 {
+		t.Errorf("after edit = +%d -%d, want +2 -0", st.LinesAdded, st.LinesRemoved)
+	}
+	mustGit(t, dir, "commit", "-am", "edit")
+	st = collect(dir)
+	if st.LinesAdded != 0 || st.LinesRemoved != 0 {
+		t.Errorf("after commit = +%d -%d, want 0/0", st.LinesAdded, st.LinesRemoved)
+	}
+}
+
 func TestParseStatus(t *testing.T) {
 	out := "# branch.head main\n" +
 		"# branch.ab +2 -1\n" +
@@ -41,7 +72,7 @@ func TestCountLines(t *testing.T) {
 func TestCacheRoundTripAndTTL(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "cache")
-	st := Status{InRepo: true, Branch: "feat|x", Ahead: 1, Behind: 2, Staged: 3, Modified: 4, Untracked: 5, Stashes: 6}
+	st := Status{InRepo: true, Branch: "feat|x", Ahead: 1, Behind: 2, Staged: 3, Modified: 4, Untracked: 5, Stashes: 6, LinesAdded: 7, LinesRemoved: 8}
 	writeCache(p, st)
 	got, ok := readCache(p)
 	if !ok {
@@ -82,6 +113,23 @@ func TestCollectAgainstRealRepo(t *testing.T) {
 func TestCollectNotARepo(t *testing.T) {
 	if st := collect(t.TempDir()); st.InRepo {
 		t.Error("temp dir is not a repo")
+	}
+}
+
+func TestLinesNoHeadCountsStaged(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	dir := t.TempDir()
+	mustGit(t, dir, "init", "-b", "main")
+	mustGit(t, dir, "config", "user.email", "t@t")
+	mustGit(t, dir, "config", "user.name", "t")
+	// Staged content with no commit yet (no HEAD).
+	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\ntwo\nthree\n"), 0o644)
+	mustGit(t, dir, "add", "a.txt")
+	st := collect(dir)
+	if st.LinesAdded != 3 {
+		t.Errorf("no-HEAD staged: added = %d, want 3", st.LinesAdded)
 	}
 }
 

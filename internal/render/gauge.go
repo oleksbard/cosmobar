@@ -15,7 +15,8 @@ const (
 	StateCrit
 )
 
-func stateFor(pct float64, warn, crit int) State {
+// StateFor maps a percentage to a threshold state.
+func StateFor(pct float64, warn, crit int) State {
 	switch {
 	case pct >= float64(crit):
 		return StateCrit
@@ -44,5 +45,5 @@ func Gauge(pct float64, width, warn, crit int, ascii bool) (string, State) {
 		full, empty = "#", "-"
 	}
 	bar := strings.Repeat(full, filled) + strings.Repeat(empty, width-filled)
-	return fmt.Sprintf("%s %d%%", bar, int(pct+0.5)), stateFor(pct, warn, crit)
+	return fmt.Sprintf("%s %d%%", bar, int(pct+0.5)), StateFor(pct, warn, crit)
 }

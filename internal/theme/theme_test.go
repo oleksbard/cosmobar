@@ -29,3 +29,15 @@ func TestNamesSortedAndComplete(t *testing.T) {
 		}
 	}
 }
+
+func TestPaletteHasExtendedColors(t *testing.T) {
+	for _, name := range Names() {
+		p, _ := Get(name)
+		if p.Secondary == (RGB{}) || p.Tertiary == (RGB{}) {
+			t.Errorf("%s: Secondary/Tertiary must be set", name)
+		}
+		if p.Dark == (RGB{}) || p.Light == (RGB{}) {
+			t.Errorf("%s: Dark/Light contrast inks must be set", name)
+		}
+	}
+}

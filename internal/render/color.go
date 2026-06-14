@@ -54,3 +54,28 @@ func to256(c theme.RGB) int {
 	b := int(c.B) * 5 / 255
 	return 16 + 36*r + 6*g + b
 }
+
+// Luminance returns Rec.601 perceived luminance in [0,1].
+func Luminance(c theme.RGB) float64 {
+	return (0.299*float64(c.R) + 0.587*float64(c.G) + 0.114*float64(c.B)) / 255.0
+}
+
+// Contrast returns dark on light backgrounds, light on dark ones.
+func Contrast(bg, dark, light theme.RGB) theme.RGB {
+	if Luminance(bg) >= 0.55 {
+		return dark
+	}
+	return light
+}
+
+// Fill wraps s with both a foreground and a background color.
+func Fill(p Profile, fg, bg theme.RGB, s string) string {
+	switch p {
+	case ProfileTrueColor:
+		return fmt.Sprintf("\x1b[38;2;%d;%d;%d;48;2;%d;%d;%dm%s\x1b[0m", fg.R, fg.G, fg.B, bg.R, bg.G, bg.B, s)
+	case Profile256:
+		return fmt.Sprintf("\x1b[38;5;%d;48;5;%dm%s\x1b[0m", to256(fg), to256(bg), s)
+	default:
+		return s
+	}
+}

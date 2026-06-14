@@ -13,6 +13,9 @@ func TestRenderTOMLRoundTrips(t *testing.T) {
 	c.Clock.Format = "12h"
 	c.Glyphs = "ascii"
 	c.RateLimits.Show = true
+	c.Style = "blocks"
+	c.BlockCaps = "square"
+	c.RateLimits.Window = "5h"
 
 	dir := t.TempDir()
 	p := filepath.Join(dir, "config.toml")
@@ -38,5 +41,11 @@ func TestRenderTOMLRoundTrips(t *testing.T) {
 	}
 	if !got.RateLimits.Show {
 		t.Error("rate_limits.show should round-trip as true")
+	}
+	if got.Style != "blocks" || got.BlockCaps != "square" {
+		t.Errorf("style/caps round-trip: %q/%q", got.Style, got.BlockCaps)
+	}
+	if got.RateLimits.Window != "5h" {
+		t.Errorf("rate window round-trip: %q", got.RateLimits.Window)
 	}
 }

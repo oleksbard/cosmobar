@@ -1,6 +1,7 @@
 package segments
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -26,9 +27,38 @@ func TestGitSegment(t *testing.T) {
 		t.Errorf("git ahead/behind = %q", seg.Text)
 	}
 
+	// long branch names are capped at maxBranchWidth (16) with a middle ellipsis
+	ctx.Git = git.Status{InRepo: true, Branch: "feature/a-very-long-branch-name"}
+	seg, _ = ctx.render(t, r)
+	if render.Width(seg.Text) > maxBranchWidth {
+		t.Errorf("long branch should be capped at %d cols, got %q (%d)", maxBranchWidth, seg.Text, render.Width(seg.Text))
+	}
+	if !strings.Contains(seg.Text, "…") {
+		t.Errorf("truncated branch should carry an ellipsis: %q", seg.Text)
+	}
+
+	// short branches are untouched
+	ctx.Git = git.Status{InRepo: true, Branch: "main"}
+	if seg, _ = ctx.render(t, r); seg.Text != "main" {
+		t.Errorf("short branch should be unchanged, got %q", seg.Text)
+	}
+
 	ctx.Git = git.Status{InRepo: false}
 	if _, ok := ctx.render(t, r); ok {
 		t.Error("git should hide when not in a repo")
+	}
+}
+
+func TestModelShorten(t *testing.T) {
+	cases := map[string]string{
+		"Opus 4.8 (1M context)": "Opus 4.8(1M)",
+		"Sonnet 4.6":            "Sonnet 4.6",
+		"Opus 4.8":              "Opus 4.8",
+	}
+	for in, want := range cases {
+		if got := shortenModel(in); got != want {
+			t.Errorf("shortenModel(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
@@ -57,20 +87,35 @@ func TestContextSegment(t *testing.T) {
 
 func TestRateLimitsSegment(t *testing.T) {
 	r, _ := Get("rate_limits")
-	c := config.Default()
-	c.RateLimits.Show = true
-	s := &session.Session{RateLimits: &session.RateLimits{
-		FiveHour: &session.RateWindow{UsedPercentage: 23.5},
-		SevenDay: &session.RateWindow{UsedPercentage: 41.2},
-	}}
-	seg, ok := (&Context{Session: s, Config: c}).render(t, r)
-	if !ok || seg.Text != "5h 24% 7d 41%" {
-		t.Errorf("rate_limits = %q", seg.Text)
+	mk := func(five, seven float64) *session.Session {
+		return &session.Session{RateLimits: &session.RateLimits{
+			FiveHour: &session.RateWindow{UsedPercentage: five},
+			SevenDay: &session.RateWindow{UsedPercentage: seven},
+		}}
 	}
 
-	// hidden when absent
+	c := config.Default()
+	c.RateLimits.Show = true // window "both"
+	seg, ok := (&Context{Session: mk(23.5, 41.2), Config: c}).render(t, r)
+	if !ok || seg.Text != "5h 24% 7d 41%" {
+		t.Errorf("both = %q", seg.Text)
+	}
+	if seg.State != render.StateOK {
+		t.Errorf("state should be OK below thresholds, got %v", seg.State)
+	}
+
+	c.RateLimits.Window = "7d"
+	seg, _ = (&Context{Session: mk(23.5, 95), Config: c}).render(t, r)
+	if seg.Text != "7d 95%" {
+		t.Errorf("7d-only = %q", seg.Text)
+	}
+	if seg.State != render.StateCrit {
+		t.Errorf("95%% should be crit, got %v", seg.State)
+	}
+
+	c.RateLimits.Window = "both"
 	if _, ok := (&Context{Session: &session.Session{}, Config: c}).render(t, r); ok {
-		t.Error("rate_limits should hide when absent")
+		t.Error("absent rate_limits should hide")
 	}
 }
 
@@ -91,16 +136,26 @@ func TestDurationSegment(t *testing.T) {
 
 func TestLinesSegment(t *testing.T) {
 	r, _ := Get("lines")
-	s := &session.Session{}
-	s.Cost.TotalLinesAdded = 156
-	s.Cost.TotalLinesRemoved = 23
-	seg, ok := (&Context{Session: s, Config: config.Default()}).render(t, r)
-	if !ok || seg.Text != "+156 -23" {
-		t.Errorf("lines = %q", seg.Text)
+	c := config.Default()
+
+	ctx := &Context{Session: &session.Session{}, Config: c, Git: git.Status{InRepo: true, LinesAdded: 128, LinesRemoved: 17}}
+	seg, ok := ctx.render(t, r)
+	if !ok {
+		t.Fatal("lines should show with changes")
+	}
+	if len(seg.Parts) != 2 || seg.Parts[0].Text != "+128" || seg.Parts[0].State != render.StateOK {
+		t.Errorf("added part wrong: %+v", seg.Parts)
+	}
+	if seg.Parts[1].Text != "-17" || seg.Parts[1].State != render.StateCrit {
+		t.Errorf("removed part wrong: %+v", seg.Parts)
+	}
+	// hidden when not in a repo
+	if _, ok := (&Context{Session: &session.Session{}, Config: c, Git: git.Status{InRepo: false}}).render(t, r); ok {
+		t.Error("lines should hide outside a repo")
 	}
 	// hidden when no changes
-	if _, ok := (&Context{Session: &session.Session{}, Config: config.Default()}).render(t, r); ok {
-		t.Error("lines should hide when no changes")
+	if _, ok := (&Context{Session: &session.Session{}, Config: c, Git: git.Status{InRepo: true}}).render(t, r); ok {
+		t.Error("lines should hide with no changes")
 	}
 }
 
@@ -141,6 +196,26 @@ func TestEffortSegment(t *testing.T) {
 	}
 	if _, ok := (&Context{Session: &session.Session{}, Config: config.Default()}).render(t, r); ok {
 		t.Error("effort should hide when absent")
+	}
+}
+
+func TestContextCompactInBackgroundStyle(t *testing.T) {
+	r, _ := Get("context")
+	pct := 63.0
+	s := &session.Session{}
+	s.ContextWindow.UsedPercentage = &pct
+
+	c := config.Default()
+	c.Style = "blocks"
+	seg, ok := (&Context{Session: s, Config: c, Profile: render.ProfileTrueColor}).render(t, r)
+	if !ok || seg.Text != "63%" {
+		t.Errorf("blocks context should be compact, got %q", seg.Text)
+	}
+
+	// blocks + NO_COLOR degrades to lean → keep the bar
+	seg, _ = (&Context{Session: s, Config: c, Profile: render.ProfileNone}).render(t, r)
+	if seg.Text == "63%" {
+		t.Errorf("NO_COLOR should keep the bar, got %q", seg.Text)
 	}
 }
 
