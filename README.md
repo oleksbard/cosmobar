@@ -1,5 +1,9 @@
 # cosmobar
 
+<p align="center">
+  <img src="assets/cosmobar.png" alt="cosmobar mascot" width="160" height="160">
+</p>
+
 A fast, dependency-light, starship-inspired status line for [Claude Code](https://code.claude.com).
 
 - Single static Go binary — no runtime, no `jq`, no Nerd Font required
