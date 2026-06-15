@@ -12,7 +12,7 @@ type gitSeg struct{}
 func (gitSeg) Name() string { return "git" }
 
 // maxBranchWidth caps long branch names; longer names get a middle ellipsis.
-const maxBranchWidth = 16
+const maxBranchWidth = 28
 
 func (gitSeg) Render(ctx *Context) (Segment, bool) {
 	st := ctx.Git

@@ -26,3 +26,25 @@ func TestPreviewOverrides(t *testing.T) {
 		t.Errorf("preview mock should show lines changes: %q", out)
 	}
 }
+
+func TestAnimateFramesProgress(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	// animationFrames returns a sequence of redraw strings ending at the final
+	// settled line; the in-flight frames scramble, so the sequence holds several
+	// distinct values (not just one repeated frame).
+	frames := animationFrames(previewOpts{cols: 100}, 1)
+	if len(frames) < 3 {
+		t.Fatalf("want several frames, got %d", len(frames))
+	}
+	last := frames[len(frames)-1]
+	if last == frames[0] {
+		t.Error("first and last frame should differ (scramble then settle)")
+	}
+	distinct := map[string]bool{}
+	for _, f := range frames {
+		distinct[f] = true
+	}
+	if len(distinct) < 3 {
+		t.Errorf("expected several distinct frames, got %d", len(distinct))
+	}
+}

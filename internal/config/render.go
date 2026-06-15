@@ -35,5 +35,17 @@ func RenderTOML(c Config) string {
 	fmt.Fprintf(&b, "[dir]\nstyle = %s\n\n", q(c.Dir.Style))
 	fmt.Fprintf(&b, "[context]\nshow = %t\n\n", c.Context.Show)
 	fmt.Fprintf(&b, "[rate_limits]\nshow = %t\nwindow = %s\n", c.RateLimits.Show, q(c.RateLimits.Window))
+	// Guard a zero-value Config (variants nil) so a hand-built Config still
+	// renders a usable pool — mirrors the gauge_thresholds fallback above.
+	avs := c.Animation.Variants
+	if len(avs) == 0 {
+		avs = []string{"glitch"}
+	}
+	qav := make([]string, len(avs))
+	for i, v := range avs {
+		qav[i] = q(v)
+	}
+	fmt.Fprintf(&b, "\n[animation]\nenabled = %t\nduration_ms = %d\nvariants = [%s]\n",
+		c.Animation.Enabled, c.Animation.DurationMs, strings.Join(qav, ", "))
 	return b.String()
 }

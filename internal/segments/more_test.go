@@ -27,7 +27,7 @@ func TestGitSegment(t *testing.T) {
 		t.Errorf("git ahead/behind = %q", seg.Text)
 	}
 
-	// long branch names are capped at maxBranchWidth (16) with a middle ellipsis
+	// long branch names are capped at maxBranchWidth (28) with a middle ellipsis
 	ctx.Git = git.Status{InRepo: true, Branch: "feature/a-very-long-branch-name"}
 	seg, _ = ctx.render(t, r)
 	if render.Width(seg.Text) > maxBranchWidth {

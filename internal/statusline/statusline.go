@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/oleksbard/cosmobar/internal/anim"
 	"github.com/oleksbard/cosmobar/internal/config"
 	"github.com/oleksbard/cosmobar/internal/git"
 	"github.com/oleksbard/cosmobar/internal/render"
@@ -22,6 +23,8 @@ type Input struct {
 	Cols    int
 	Profile render.Profile
 	Now     time.Time
+	// Anim, when non-nil and enabled, scrambles changed segment values.
+	Anim *anim.Session
 }
 
 // Render produces the final status line (one or more newline-separated rows).
@@ -58,6 +61,13 @@ func Render(in Input) string {
 		}
 	}
 
+	if in.Anim != nil {
+		for i := range segs {
+			animateSegment(in.Anim, &segs[i], in.Now)
+		}
+		in.Anim.Commit()
+	}
+
 	style := effectiveStyle(in.Config, in.Profile)
 
 	segRuns := make([][]run, len(segs))
@@ -80,4 +90,36 @@ func Render(in Input) string {
 		lines = append(lines, emitRow(in.Profile, style, in.Config, pal, segRuns, row))
 	}
 	return strings.Join(lines, "\n")
+}
+
+// segmentSignature is the change-detection key for a segment: its part texts
+// joined by NUL so distinct part splits can't collide.
+func segmentSignature(parts []segments.Part) string {
+	var b strings.Builder
+	for i, pt := range parts {
+		if i > 0 {
+			b.WriteByte(0)
+		}
+		b.WriteString(pt.Text)
+	}
+	return b.String()
+}
+
+// animateSegment replaces a segment's part texts with their scramble frame for
+// this instant, preserving each part's color/state and the segment's width.
+func animateSegment(sess *anim.Session, seg *segments.Segment, now time.Time) {
+	parts := seg.EffectiveParts()
+	p := sess.Plan(seg.Name, segmentSignature(parts), now)
+	if !p.Active {
+		return
+	}
+	newParts := make([]segments.Part, len(parts))
+	for i, pt := range parts {
+		newParts[i] = segments.Part{
+			Text:  anim.Frame(pt.Text, p.Progress, p.Variant, p.Seed, p.ASCII),
+			State: pt.State,
+		}
+	}
+	seg.Parts = newParts
+	seg.Text = "" // Parts is now authoritative (EffectiveParts prefers Parts)
 }

@@ -19,6 +19,7 @@ func cmdInit(args []string) int {
 	style := fs.String("style", "", "style: lean | tick | blocks")
 	caps := fs.String("caps", "", "block caps: soft | square")
 	rateWindow := fs.String("rate-window", "", "rate-limit window: both | 5h | 7d")
+	animate := fs.String("animate", "", "value-change animation: on | off")
 	force := fs.Bool("force", false, "overwrite an existing config file")
 	noSkill := fs.Bool("no-skill", false, "do not install the Claude Code setup skill")
 	if err := fs.Parse(args); err != nil {
@@ -70,6 +71,10 @@ func cmdInit(args []string) int {
 	}
 	if *rateWindow != "" {
 		cfg.RateLimits.Window = *rateWindow
+		customized = true
+	}
+	if *animate != "" {
+		cfg.Animation.Enabled = *animate == "on"
 		customized = true
 	}
 	// Keep per-segment toggles consistent with the enabled order.

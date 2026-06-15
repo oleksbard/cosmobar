@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/oleksbard/cosmobar/internal/anim"
 	"github.com/oleksbard/cosmobar/internal/config"
 	"github.com/oleksbard/cosmobar/internal/git"
 	"github.com/oleksbard/cosmobar/internal/render"
@@ -24,14 +25,19 @@ func renderFromJSON(r io.Reader, cols int) string {
 		fmt.Fprintln(os.Stderr, "cosmobar: config error:", cerr)
 		cfg = config.Default()
 	}
-	return statusline.Render(statusline.Input{
+	prof := render.DetectProfile(os.Getenv)
+	sess := anim.Load(s.SessionID, cfg, prof)
+	out := statusline.Render(statusline.Input{
 		Session: s,
 		Git:     git.Lookup(s.SessionID, s.Dir()),
 		Config:  cfg,
 		Cols:    cols,
-		Profile: render.DetectProfile(os.Getenv),
+		Profile: prof,
 		Now:     time.Now(),
+		Anim:    sess,
 	})
+	sess.Save()
+	return out
 }
 
 func cmdPrint(_ []string) int {

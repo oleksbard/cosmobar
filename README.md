@@ -76,15 +76,28 @@ show = true
 [rate_limits]
 show   = false                        # Pro/Max only
 window = "both"                       # both | 5h | 7d
+
+[animation]
+enabled     = true                              # scramble values when they change
+duration_ms = 700
+variants    = ["glitch"]                        # default; add "decode"/"scatter" to mix flavors
 ```
 
 Available segments: `dir`, `git`, `model`, `context`, `cost`, `clock`,
 `rate_limits`, `duration`, `lines`, `output_style`, `git_stash`, `effort`.
 Add or reorder them in `order`.
 
+> When a segment's value changes, cosmobar briefly scrambles its characters
+> through symbols and decodes into the new value, using the `glitch` flavor by
+> default (set `variants` to mix in `decode`/`scatter` for a random pick). It's purely visual and
+> width-stable; the scramble runs for `duration_ms` and is only visible while
+> Claude Code is actively refreshing the line — otherwise it settles straight
+> to the final value. Watch it without launching Claude Code:
+> `cosmobar preview --animate`.
+>
 > `lines` reflects **git working-tree changes** (lines added/removed vs the last commit; untracked files aren't counted) and resets after you commit. In `blocks` style its `+N`/`-N` render as one flush two-tone pill. Every style is font-free — no Nerd Font required.
 >
-> Long branch names are capped at 16 columns (middle ellipsis), and model names are compacted (e.g. `Opus 4.8 (1M context)` → `Opus 4.8(1M)`).
+> Long branch names are capped at 28 columns (middle ellipsis), and model names are compacted (e.g. `Opus 4.8 (1M context)` → `Opus 4.8(1M)`).
 
 Preview any look without launching Claude Code — `preview` uses the **same render pipeline** as the live status line (only the session/git data is mocked), so what you see is what you get:
 
@@ -99,11 +112,11 @@ Every flag is optional and overrides just that field: `--cols --theme --style --
 | Command | What it does |
 |---|---|
 | `cosmobar` | Render the status line (reads JSON from stdin). |
-| `cosmobar init` | Wire into `settings.json`, write config, install the setup skill. Flags: `--theme --order --clock --glyphs --style --caps --rate-window --force --no-skill`. |
+| `cosmobar init` | Wire into `settings.json`, write config, install the setup skill. Flags: `--theme --order --clock --glyphs --style --caps --rate-window --animate --force --no-skill`. |
 | `cosmobar install-skill` | Install the `/cosmobar` guided-setup skill into `~/.claude/skills/`. |
 | `cosmobar segments [--json]` | List all available segments (the dynamic catalog). |
 | `cosmobar uninstall [--purge]` | Remove the `statusLine` block from `settings.json` (inverse of `init`). `--purge` also deletes the config file and the binary. |
-| `cosmobar preview` | Render the bundled mock session with the live pipeline. Flags: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config`. |
+| `cosmobar preview` | Render the bundled mock session with the live pipeline. Flags: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config`. Add `--animate` to watch value changes scramble. |
 | `cosmobar doctor` | Offline diagnostics. |
 | `cosmobar themes` | List built-in themes. |
 | `cosmobar upgrade [--check]` | Self-update from the latest GitHub Release. |

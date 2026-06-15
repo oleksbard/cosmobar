@@ -25,6 +25,12 @@ type RateLimitsConfig struct {
 	Window string `toml:"window"` // both | 5h | 7d
 }
 
+type AnimationConfig struct {
+	Enabled    bool     `toml:"enabled"`
+	DurationMs int      `toml:"duration_ms"`
+	Variants   []string `toml:"variants"` // pool to pick randomly from: decode | glitch | scatter
+}
+
 type Config struct {
 	Theme           string           `toml:"theme"`
 	Order           []string         `toml:"order"`
@@ -39,6 +45,7 @@ type Config struct {
 	Dir             DirConfig        `toml:"dir"`
 	Context         Toggle           `toml:"context"`
 	RateLimits      RateLimitsConfig `toml:"rate_limits"`
+	Animation       AnimationConfig  `toml:"animation"`
 }
 
 // Default returns the built-in configuration used when no file is present
@@ -58,6 +65,7 @@ func Default() Config {
 		Dir:             DirConfig{Style: "basename"},
 		Context:         Toggle{Show: true},
 		RateLimits:      RateLimitsConfig{Show: false, Window: "both"},
+		Animation:       AnimationConfig{Enabled: true, DurationMs: 700, Variants: []string{"glitch"}},
 	}
 }
 

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -62,6 +63,28 @@ func TestLoadInvalidTOMLReturnsError(t *testing.T) {
 	os.WriteFile(p, []byte("theme = = ="), 0o644)
 	if _, err := Load(p); err == nil {
 		t.Errorf("expected parse error")
+	}
+}
+
+func TestDefaultAnimation(t *testing.T) {
+	c := Default()
+	if !c.Animation.Enabled {
+		t.Error("animation should default enabled")
+	}
+	if c.Animation.DurationMs != 700 {
+		t.Errorf("duration_ms = %d, want 700", c.Animation.DurationMs)
+	}
+	if strings.Join(c.Animation.Variants, ",") != "glitch" {
+		t.Errorf("variants = %v, want [glitch]", c.Animation.Variants)
+	}
+}
+
+func TestRenderTOMLHasAnimation(t *testing.T) {
+	out := RenderTOML(Default())
+	for _, want := range []string{"[animation]", "enabled = true", "duration_ms = 700", `variants = ["glitch"]`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("RenderTOML missing %q\n%s", want, out)
+		}
 	}
 }
 
