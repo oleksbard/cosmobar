@@ -37,3 +37,32 @@ func TestFitDropsLowestPriorityWhenOverflowing(t *testing.T) {
 		t.Errorf("Fit drop = %v, want %v", got, want)
 	}
 }
+
+func TestFitKeepsSingleOverWideItem(t *testing.T) {
+	// A lone item wider than cols must still be returned: the last segment is
+	// never dropped, and the drop loop terminates (no infinite loop / empty out).
+	got := Fit([]int{50}, []int{10}, 3, 20, 1)
+	want := [][]int{{0}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("over-wide single item = %v, want %v", got, want)
+	}
+}
+
+func TestFitDropsAcrossTwoRows(t *testing.T) {
+	// cols=12 fits only one 10-wide item per row (10+3+10=23 > 12), so four
+	// items would need four rows; with maxRows=2 the two lowest-prio items drop.
+	widths := []int{10, 10, 10, 10}
+	prios := []int{40, 10, 20, 30} // idx1 (10) then idx2 (20) are the victims
+	got := Fit(widths, prios, 3, 12, 2)
+	want := [][]int{{0}, {3}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("two-row drop = %v, want %v", got, want)
+	}
+}
+
+func TestLowestPrioBreaksTiesByLast(t *testing.T) {
+	// Equal priorities: the last index wins, so eviction is deterministic.
+	if v := lowestPrio([]int{0, 1, 2}, []int{50, 50, 50}); v != 2 {
+		t.Errorf("tie victim = %d, want 2 (last)", v)
+	}
+}

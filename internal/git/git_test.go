@@ -57,6 +57,29 @@ func TestParseStatus(t *testing.T) {
 	}
 }
 
+func TestParseStatusRenameDetachedNoUpstream(t *testing.T) {
+	// Detached HEAD (branch shows "(detached)"), no "# branch.ab" line (no
+	// upstream → 0 ahead/behind), a renamed file ("2 " entry, which the earlier
+	// test never exercised) that must count as staged, plus one modified file.
+	out := "# branch.oid abc123\n" +
+		"# branch.head (detached)\n" +
+		"2 R. N... 100644 100644 100644 aaa bbb R100 new.go\told.go\n" +
+		"1 .M N... 100644 100644 100644 aaa bbb mod.go\n"
+	st := parseStatus(out)
+	if st.Branch != "(detached)" {
+		t.Errorf("detached branch = %q, want %q", st.Branch, "(detached)")
+	}
+	if st.Ahead != 0 || st.Behind != 0 {
+		t.Errorf("no upstream should yield 0/0, got %d/%d", st.Ahead, st.Behind)
+	}
+	if st.Staged != 1 {
+		t.Errorf("renamed file should count as staged, got %d", st.Staged)
+	}
+	if st.Modified != 1 {
+		t.Errorf("modified count = %d, want 1", st.Modified)
+	}
+}
+
 func TestCountLines(t *testing.T) {
 	if countLines("") != 0 {
 		t.Error("empty")
