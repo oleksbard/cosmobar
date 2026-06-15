@@ -7,9 +7,8 @@
 A fast, dependency-light, starship-inspired status line for [Claude Code](https://code.claude.com).
 
 - Single static Go binary — no runtime, no `jq`, no Nerd Font required
-- Lean, themed output with a context gauge, git status, cost, model, and more
-- One cached `git` call per refresh; everything else is parsed from stdin JSON
-- TOML config; instant local preview; one-command self-update
+- Themed segments: context gauge, git status, cost, model, clock, and more
+- TOML config, instant local preview, one-command self-update
 
 ## Install
 
@@ -18,40 +17,26 @@ curl -sS https://raw.githubusercontent.com/oleksbard/cosmobar/main/install.sh | 
 cosmobar init
 ```
 
-`init` wires `cosmobar` into `~/.claude/settings.json`, writes a default
-config to `~/.config/cosmobar/config.toml`, and installs the guided-setup
-skill. Restart Claude Code (or send a message) to see the status line.
+`init` wires `cosmobar` into `~/.claude/settings.json`, writes a default config
+to `~/.config/cosmobar/config.toml`, and installs the guided-setup skill.
+Restart Claude Code (or send a message) to see the status line.
 
-## Install from inside Claude Code
+### From inside Claude Code
 
-Prefer to stay in Claude Code? cosmobar ships as a Claude Code plugin. One time:
+cosmobar also ships as a Claude Code plugin (macOS/Linux):
 
 ```sh
 /plugin marketplace add oleksbard/cosmobar
 /plugin install cosmobar@cosmobar
 ```
 
-Then say **"install cosmobar"** (or run `/cosmobar:install`). Claude downloads the binary with the same installer, wires it into Claude Code, and walks you through setup — no shell command to copy. macOS/Linux only.
-
-## Guided setup inside Claude Code
-
-`init` (or `cosmobar install-skill`) drops a `/cosmobar` skill into
-`~/.claude/skills/`. In Claude Code, run **`/cosmobar`** (or just ask
-"set up cosmobar") and Claude will:
-
-1. discover the available segments and themes **dynamically** (`cosmobar
-   segments --json`, `cosmobar themes --json`) — new segments appear
-   automatically, nothing is hardcoded;
-2. ask you which segments to show, plus theme, clock, glyph style, pill style, and rate-limit window;
-3. apply everything with one command:
-   `cosmobar init --force --theme <t> --order <a,b,c> --clock <fmt> --glyphs <g> --style <s> --caps <c> --rate-window <w>`;
-4. show you the result with `cosmobar preview`.
-
-You can re-run it anytime to reconfigure.
+Then say **"install cosmobar"** (or run `/cosmobar:install`) — Claude downloads
+the binary, wires it in, and walks you through setup, no shell command to copy.
 
 ## Configure
 
-Edit `~/.config/cosmobar/config.toml`:
+Run **`/cosmobar`** in Claude Code (or just ask "set up cosmobar") for guided
+setup, or edit `~/.config/cosmobar/config.toml` directly:
 
 ```toml
 theme            = "coral"            # coral | catppuccin | nord | gruvbox
@@ -65,7 +50,7 @@ style            = "lean"             # lean | tick | blocks
 block_caps       = "soft"             # soft | square  (blocks style only)
 
 [clock]
-format = "24h"
+format = "24h"                        # 24h | 12h | off
 
 [dir]
 style = "basename"                    # basename | short-path | full
@@ -78,34 +63,23 @@ show   = false                        # Pro/Max only
 window = "both"                       # both | 5h | 7d
 
 [animation]
-enabled     = true                              # scramble values when they change
+enabled     = true                    # briefly scramble a value when it changes
 duration_ms = 700
-variants    = ["glitch"]                        # default; add "decode"/"scatter" to mix flavors
+variants    = ["glitch"]              # glitch | decode | scatter (list to mix)
 ```
 
 Available segments: `dir`, `git`, `model`, `context`, `cost`, `clock`,
 `rate_limits`, `duration`, `lines`, `output_style`, `git_stash`, `effort`.
 Add or reorder them in `order`.
 
-> When a segment's value changes, cosmobar briefly scrambles its characters
-> through symbols and decodes into the new value, using the `glitch` flavor by
-> default (set `variants` to mix in `decode`/`scatter` for a random pick). It's purely visual and
-> width-stable; the scramble runs for `duration_ms` and is only visible while
-> Claude Code is actively refreshing the line — otherwise it settles straight
-> to the final value. Watch it without launching Claude Code:
-> `cosmobar preview --animate`.
->
-> `lines` reflects **git working-tree changes** (lines added/removed vs the last commit; untracked files aren't counted) and resets after you commit. In `blocks` style its `+N`/`-N` render as one flush two-tone pill. Every style is font-free — no Nerd Font required.
->
-> Long branch names are capped at 28 columns (middle ellipsis), and model names are compacted (e.g. `Opus 4.8 (1M context)` → `Opus 4.8(1M)`).
-
-Preview any look without launching Claude Code — `preview` uses the **same render pipeline** as the live status line (only the session/git data is mocked), so what you see is what you get:
+Preview any look without launching Claude Code (every flag is optional and
+overrides just that field):
 
 ```sh
 cosmobar preview --theme nord --style blocks --caps soft --order git,model,context,lines
+# --cols --theme --style --caps --glyphs --clock --rate-window --order --config
+# add --animate to watch value changes scramble
 ```
-
-Every flag is optional and overrides just that field: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config`.
 
 ## Commands
 
@@ -114,12 +88,12 @@ Every flag is optional and overrides just that field: `--cols --theme --style --
 | `cosmobar` | Render the status line (reads JSON from stdin). |
 | `cosmobar init` | Wire into `settings.json`, write config, install the setup skill. Flags: `--theme --order --clock --glyphs --style --caps --rate-window --animate --force --no-skill`. |
 | `cosmobar install-skill` | Install the `/cosmobar` guided-setup skill into `~/.claude/skills/`. |
-| `cosmobar segments [--json]` | List all available segments (the dynamic catalog). |
-| `cosmobar uninstall [--purge]` | Remove the `statusLine` block from `settings.json` (inverse of `init`). `--purge` also deletes the config file and the binary. |
-| `cosmobar preview` | Render the bundled mock session with the live pipeline. Flags: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config`. Add `--animate` to watch value changes scramble. |
-| `cosmobar doctor` | Offline diagnostics. |
+| `cosmobar segments [--json]` | List all available segments. |
+| `cosmobar preview` | Render a mock session locally. Flags: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config --animate`. |
 | `cosmobar themes` | List built-in themes. |
+| `cosmobar doctor` | Offline diagnostics. |
 | `cosmobar upgrade [--check]` | Self-update from the latest GitHub Release. |
+| `cosmobar uninstall [--purge]` | Remove the `statusLine` block from `settings.json`. `--purge` also deletes the config file and the binary. |
 
 ## Updating
 
@@ -137,36 +111,9 @@ cosmobar uninstall          # remove the statusLine block from ~/.claude/setting
 cosmobar uninstall --purge  # also delete ~/.config/cosmobar/ and the binary
 ```
 
-`uninstall` preserves your other `settings.json` keys and writes a `settings.json.bak`
-backup first. You can also revert manually with
+`uninstall` preserves your other `settings.json` keys and writes a
+`settings.json.bak` backup first. You can also revert manually with
 `mv ~/.claude/settings.json.bak ~/.claude/settings.json`.
-
-## Development
-
-```sh
-make test                   # go test ./...
-cosmobar preview --cols 80  # fast visual loop (use `go run . preview` too)
-make dev                    # build + wire ./testsettings/.claude/settings.json
-```
-
-> Don't set the Claude Code `statusLine` command to `go run .` — it recompiles
-> on every invocation. Always point at a built binary (`make build`).
-
-### Adding a segment
-
-1. Create `internal/segments/<name>.go` implementing the `Renderer` interface
-   (`Name()` + `Render(ctx) (Segment, bool)`), and call `register(...)` in `init()`.
-2. Add a table test in `internal/segments/`.
-3. Add the name to `order` in your config to enable it.
-
-## Releasing
-
-```sh
-git tag vX.Y.Z && git push --tags
-```
-
-GitHub Actions runs GoReleaser, which cross-compiles darwin/linux × amd64/arm64
-and publishes a Release with binaries + `checksums.txt`.
 
 ## License
 
