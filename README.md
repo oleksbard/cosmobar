@@ -10,6 +10,10 @@ A fast, dependency-light, starship-inspired status line for [Claude Code](https:
 - Themed segments: context gauge, git status, cost, model, clock, and more
 - TOML config, instant local preview, one-command self-update
 
+<p align="center">
+  <img src="assets/gallery.png" alt="cosmobar preview --gallery showing the coral/lean, nord/tick, catppuccin/blocks, and gruvbox/blocks presets">
+</p>
+
 ## Install
 
 ```sh
@@ -81,12 +85,6 @@ cosmobar preview --theme nord --style blocks --caps soft --order git,model,conte
 # add --animate to watch value changes scramble
 # add --gallery to print a spread of example presets (all themes + varied widget sets)
 ```
-
-`--gallery` prints a labeled spread across all themes, styles, and widget sets:
-
-<p align="center">
-  <img src="assets/gallery.png" alt="cosmobar preview --gallery showing the coral/lean, nord/tick, catppuccin/blocks, and gruvbox/blocks presets">
-</p>
 
 ## Commands
 
