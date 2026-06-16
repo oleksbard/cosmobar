@@ -57,6 +57,51 @@ func TestParseStatus(t *testing.T) {
 	}
 }
 
+func TestAddedLineCount(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int
+	}{
+		{"", 0},
+		{"a\nb\nc\n", 3},
+		{"a\nb\nc", 3}, // final line without a trailing newline still counts
+		{"\n", 1},
+	}
+	for _, c := range cases {
+		if got := addedLineCount([]byte(c.in)); got != c.want {
+			t.Errorf("addedLineCount(%q) = %d, want %d", c.in, got, c.want)
+		}
+	}
+	if got := addedLineCount([]byte("a\x00b\nc\n")); got != 0 {
+		t.Errorf("binary content (NUL) should count 0, got %d", got)
+	}
+}
+
+func TestLinesCountUntrackedFiles(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	dir := t.TempDir()
+	mustGit(t, dir, "init", "-b", "main")
+	mustGit(t, dir, "config", "user.email", "t@t")
+	mustGit(t, dir, "config", "user.name", "t")
+	os.WriteFile(filepath.Join(dir, "tracked.txt"), []byte("a\nb\nc\n"), 0o644)
+	mustGit(t, dir, "add", "tracked.txt")
+	mustGit(t, dir, "commit", "-m", "init")
+
+	// tracked edit (+2) plus a brand-new untracked file (+3): git diff HEAD omits
+	// the untracked file, so the total must come from counting it explicitly.
+	os.WriteFile(filepath.Join(dir, "tracked.txt"), []byte("a\nb\nc\nd\ne\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "new.txt"), []byte("x\ny\nz\n"), 0o644)
+	st := collect(dir)
+	if st.LinesAdded != 5 {
+		t.Errorf("LinesAdded = %d, want 5 (2 tracked + 3 untracked)", st.LinesAdded)
+	}
+	if st.LinesRemoved != 0 {
+		t.Errorf("LinesRemoved = %d, want 0", st.LinesRemoved)
+	}
+}
+
 func TestParseStatusRenameDetachedNoUpstream(t *testing.T) {
 	// Detached HEAD (branch shows "(detached)"), no "# branch.ab" line (no
 	// upstream → 0 ahead/behind), a renamed file ("2 " entry, which the earlier
@@ -89,6 +134,17 @@ func TestCountLines(t *testing.T) {
 	}
 	if countLines("a\nb") != 2 {
 		t.Error("no trailing newline")
+	}
+}
+
+func TestCacheTTLStaysBelowRefreshFloor(t *testing.T) {
+	// The per-session cache must expire faster than Claude Code's ~300ms minimum
+	// statusline invocation interval. Otherwise a refresh right after an edit
+	// serves a stale Status and git-derived segments (lines, branch, counts) lag
+	// behind the real repo state — the bug this guards against.
+	const refreshFloor = 300 * time.Millisecond
+	if cacheTTL > refreshFloor {
+		t.Errorf("cacheTTL = %v, must be <= %v so a refresh after an edit re-runs git", cacheTTL, refreshFloor)
 	}
 }
 

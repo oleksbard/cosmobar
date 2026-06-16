@@ -14,11 +14,12 @@ import (
 
 // Context is everything a segment needs to render.
 type Context struct {
-	Session *session.Session
-	Git     git.Status
-	Config  config.Config
-	Now     time.Time
-	Profile render.Profile
+	Session       *session.Session
+	Git           git.Status
+	Config        config.Config
+	Now           time.Time
+	Profile       render.Profile
+	SessionTokens *session.TokenUsage
 }
 
 // Part is one colored fragment of a segment (e.g. the "+12" in a lines count).

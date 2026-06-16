@@ -10,7 +10,15 @@ import (
 	"github.com/oleksbard/cosmobar/internal/git"
 	"github.com/oleksbard/cosmobar/internal/render"
 	"github.com/oleksbard/cosmobar/internal/session"
+	"github.com/oleksbard/cosmobar/internal/theme"
 )
+
+func TestUsageRoleUsesQuaternary(t *testing.T) {
+	pal, _ := theme.Get("catppuccin")
+	if got := partColor(pal, "usage", render.StateNone); got != pal.Quaternary {
+		t.Errorf("usage role color = %v, want Quaternary %v", got, pal.Quaternary)
+	}
+}
 
 func styledInput(style string, prof render.Profile) Input {
 	c := config.Default()

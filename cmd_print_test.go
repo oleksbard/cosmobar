@@ -31,6 +31,65 @@ func TestRenderFromInvalidJSONIsEmpty(t *testing.T) {
 	}
 }
 
+// tokensConfig writes a config enabling the tokens segment and points
+// COSMOBAR_CONFIG at it, so renderFromJSON exercises the conditional gather.
+func tokensConfig(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("NO_COLOR", "1")
+	cfgPath := filepath.Join(dir, "cosmobar.toml")
+	if err := os.WriteFile(cfgPath, []byte(`order = ["dir", "tokens"]`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("COSMOBAR_CONFIG", cfgPath)
+}
+
+// oneTurnTranscript writes a transcript with a single assistant turn whose
+// input+output totals 12000 tokens, which humanTokens renders as "12k".
+func oneTurnTranscript(t *testing.T, dir string) string {
+	t.Helper()
+	p := filepath.Join(dir, "t.jsonl")
+	line := `{"type":"assistant","requestId":"r1","message":{"id":"m1","usage":{"input_tokens":12000,"output_tokens":0}}}` + "\n"
+	if err := os.WriteFile(p, []byte(line), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestRenderFromJSONShowsTokensWhenEnabled(t *testing.T) {
+	dir := t.TempDir()
+	tokensConfig(t, dir)
+	tr := oneTurnTranscript(t, dir)
+	json := `{"workspace":{"current_dir":"/tmp/proj"},"transcript_path":"` + tr + `"}`
+	out := renderFromJSON(strings.NewReader(json), 120)
+	if !strings.Contains(out, "12k tok") {
+		t.Errorf("expected %q in output, got %q", "12k tok", out)
+	}
+}
+
+func TestRenderFromJSONOmitsTokensWhenNotInOrder(t *testing.T) {
+	hermeticConfig(t) // default order has no "tokens"
+	dir := t.TempDir()
+	tr := oneTurnTranscript(t, dir)
+	json := `{"workspace":{"current_dir":"/tmp/proj"},"transcript_path":"` + tr + `"}`
+	out := renderFromJSON(strings.NewReader(json), 120)
+	if strings.Contains(out, "tok") {
+		t.Errorf("tokens segment should be absent when not in order, got %q", out)
+	}
+}
+
+func TestRenderFromJSONHidesTokensWhenTranscriptUnreadable(t *testing.T) {
+	dir := t.TempDir()
+	tokensConfig(t, dir)
+	json := `{"workspace":{"current_dir":"/tmp/proj"},"transcript_path":"` + filepath.Join(dir, "nope.jsonl") + `"}`
+	out := renderFromJSON(strings.NewReader(json), 120)
+	if strings.Contains(out, "tok") {
+		t.Errorf("tokens segment should hide when transcript unreadable, got %q", out)
+	}
+	if !strings.Contains(out, "proj") {
+		t.Errorf("dir segment should still render, got %q", out)
+	}
+}
+
 func TestRenderFromJSONRunsWithAnimation(t *testing.T) {
 	hermeticConfig(t)
 	// anim.Load persists state to $TMPDIR/cosmobar-anim-<sanitized id>; remove it

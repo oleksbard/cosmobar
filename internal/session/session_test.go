@@ -63,3 +63,19 @@ func TestParseInvalid(t *testing.T) {
 		t.Errorf("expected error for invalid JSON")
 	}
 }
+
+func TestParseTranscriptPath(t *testing.T) {
+	s, err := Parse(strings.NewReader(`{"session_id":"x","transcript_path":"/tmp/t.jsonl"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.TranscriptPath != "/tmp/t.jsonl" {
+		t.Errorf("TranscriptPath = %q, want /tmp/t.jsonl", s.TranscriptPath)
+	}
+}
+
+func TestTokenUsageTotal(t *testing.T) {
+	if got := (TokenUsage{Input: 3, Output: 4}).Total(); got != 7 {
+		t.Errorf("Total() = %d, want 7", got)
+	}
+}

@@ -25,6 +25,9 @@ type Input struct {
 	Now     time.Time
 	// Anim, when non-nil and enabled, scrambles changed segment values.
 	Anim *anim.Session
+	// SessionTokens, when non-nil, supplies cumulative session token usage to
+	// the tokens segment.
+	SessionTokens *session.TokenUsage
 }
 
 // Render produces the final status line (one or more newline-separated rows).
@@ -38,7 +41,7 @@ func Render(in Input) string {
 		cols = 80
 	}
 
-	ctx := &segments.Context{Session: in.Session, Git: in.Git, Config: in.Config, Now: in.Now, Profile: in.Profile}
+	ctx := &segments.Context{Session: in.Session, Git: in.Git, Config: in.Config, Now: in.Now, Profile: in.Profile, SessionTokens: in.SessionTokens}
 
 	var segs []segments.Segment
 	for _, name := range in.Config.Order {

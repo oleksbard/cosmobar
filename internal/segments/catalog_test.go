@@ -33,11 +33,18 @@ func TestDefaultOrderMatchesConfigDefault(t *testing.T) {
 }
 
 func TestEverySegmentHasValidRole(t *testing.T) {
-	valid := map[string]bool{"identity": true, "vcs": true, "metric": true, "gauge": true, "ambient": true}
+	valid := map[string]bool{"identity": true, "vcs": true, "metric": true, "gauge": true, "ambient": true, "usage": true}
 	for _, m := range Catalog() {
 		if !valid[m.Role] {
 			t.Errorf("%s has invalid role %q", m.Name, m.Role)
 		}
+	}
+}
+
+func TestTokensUsesUsageRole(t *testing.T) {
+	m, ok := MetaByName("tokens")
+	if !ok || m.Role != "usage" {
+		t.Errorf("tokens role = %q ok=%v, want usage", m.Role, ok)
 	}
 }
 

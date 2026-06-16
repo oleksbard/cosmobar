@@ -75,13 +75,15 @@ func previewRender(o previewOpts) string {
 		cols = 100
 	}
 	s, _ := session.Parse(bytes.NewReader(mockSession))
+	mockTokens := session.TokenUsage{Input: 210_000, Output: 38_000}
 	return statusline.Render(statusline.Input{
-		Session: s,
-		Git:     previewMockGit,
-		Config:  cfg,
-		Cols:    cols,
-		Profile: render.DetectProfile(os.Getenv),
-		Now:     time.Now(),
+		Session:       s,
+		Git:           previewMockGit,
+		Config:        cfg,
+		Cols:          cols,
+		Profile:       render.DetectProfile(os.Getenv),
+		Now:           time.Now(),
+		SessionTokens: &mockTokens,
 	})
 }
 

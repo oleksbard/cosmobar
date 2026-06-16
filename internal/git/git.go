@@ -2,6 +2,7 @@
 package git
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,7 +26,11 @@ type Status struct {
 	LinesRemoved int
 }
 
-const cacheTTL = time.Second
+// cacheTTL is kept below Claude Code's ~300ms minimum statusline invocation
+// interval so normal refreshes re-run git (current state) and only true
+// sub-frame bursts collapse to one call. A longer TTL made git-derived segments
+// (lines, branch, counts) visibly lag the working tree.
+const cacheTTL = 250 * time.Millisecond
 
 // Lookup returns git status for dir, caching the result per session for ~1s
 // in the OS temp dir. Errors (not a repo, git missing) yield a zero Status.
@@ -63,7 +68,48 @@ func collect(dir string) Status {
 		}
 		st.LinesAdded, st.LinesRemoved = a1+a2, r1+r2
 	}
+	// git diff omits untracked files entirely, so a brand-new file would add
+	// zero to the count. Count its lines explicitly so the total matches the
+	// working tree (and Claude Code's own change counter).
+	st.LinesAdded += untrackedAddedLines(dir)
 	return st
+}
+
+// untrackedAddedLines sums the line counts of untracked, non-ignored files
+// (respecting .gitignore via --exclude-standard), which `git diff` never
+// reports. Binary files are skipped, mirroring git's numstat.
+func untrackedAddedLines(dir string) int {
+	out, err := run(dir, "ls-files", "--others", "--exclude-standard", "-z")
+	if err != nil {
+		return 0
+	}
+	total := 0
+	for _, name := range strings.Split(strings.TrimRight(out, "\x00"), "\x00") {
+		if name == "" {
+			continue
+		}
+		if data, err := os.ReadFile(filepath.Join(dir, name)); err == nil {
+			total += addedLineCount(data)
+		}
+	}
+	return total
+}
+
+// addedLineCount returns how many lines git would count as added for a new file
+// with this content: the number of lines, with a final unterminated line still
+// counted. Binary content (containing a NUL byte) counts as 0, like git.
+func addedLineCount(data []byte) int {
+	if len(data) == 0 {
+		return 0
+	}
+	if bytes.IndexByte(data, 0) >= 0 {
+		return 0
+	}
+	n := bytes.Count(data, []byte{'\n'})
+	if data[len(data)-1] != '\n' {
+		n++
+	}
+	return n
 }
 
 func run(dir string, args ...string) (string, error) {

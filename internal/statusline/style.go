@@ -71,6 +71,8 @@ func partColor(pal theme.Palette, role string, st render.State) theme.RGB {
 		return pal.Secondary
 	case "metric":
 		return pal.Tertiary
+	case "usage":
+		return pal.Quaternary
 	case "ambient":
 		return pal.Muted
 	default: // identity / gauge-without-state / unknown

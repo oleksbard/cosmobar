@@ -7,15 +7,16 @@ import (
 )
 
 type Session struct {
-	SessionID     string        `json:"session_id"`
-	Cwd           string        `json:"cwd"`
-	Model         Model         `json:"model"`
-	Workspace     Workspace     `json:"workspace"`
-	OutputStyle   OutputStyle   `json:"output_style"`
-	Cost          Cost          `json:"cost"`
-	ContextWindow ContextWindow `json:"context_window"`
-	RateLimits    *RateLimits   `json:"rate_limits"`
-	Effort        *Effort       `json:"effort"`
+	SessionID      string        `json:"session_id"`
+	TranscriptPath string        `json:"transcript_path"`
+	Cwd            string        `json:"cwd"`
+	Model          Model         `json:"model"`
+	Workspace      Workspace     `json:"workspace"`
+	OutputStyle    OutputStyle   `json:"output_style"`
+	Cost           Cost          `json:"cost"`
+	ContextWindow  ContextWindow `json:"context_window"`
+	RateLimits     *RateLimits   `json:"rate_limits"`
+	Effort         *Effort       `json:"effort"`
 }
 
 type Model struct {
@@ -65,6 +66,15 @@ type RateWindow struct {
 type Effort struct {
 	Level string `json:"level"`
 }
+
+// TokenUsage is a cumulative token count for a session.
+type TokenUsage struct {
+	Input  int
+	Output int
+}
+
+// Total returns input + output tokens.
+func (t TokenUsage) Total() int { return t.Input + t.Output }
 
 // Dir returns the best available working directory.
 func (s *Session) Dir() string {

@@ -20,6 +20,7 @@ var catalog = []Meta{
 	{Name: "model", Description: "Active model name", DefaultOn: true, Role: "identity"},
 	{Name: "context", Description: "Context-window usage gauge", DefaultOn: true, Role: "gauge"},
 	{Name: "cost", Description: "Session cost in USD", DefaultOn: true, Role: "metric"},
+	{Name: "tokens", Description: "Cumulative session tokens (input + output)", Role: "usage"},
 	{Name: "clock", Description: "Current time", DefaultOn: true, Role: "ambient"},
 	{Name: "rate_limits", Description: "5-hour and 7-day usage limits", ProMaxOnly: true, Role: "gauge"},
 	{Name: "duration", Description: "Session wall-clock duration", Role: "metric"},

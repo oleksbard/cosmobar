@@ -36,6 +36,12 @@ func TestPaletteHasExtendedColors(t *testing.T) {
 		if p.Secondary == (RGB{}) || p.Tertiary == (RGB{}) {
 			t.Errorf("%s: Secondary/Tertiary must be set", name)
 		}
+		if p.Quaternary == (RGB{}) {
+			t.Errorf("%s: Quaternary must be set", name)
+		}
+		if p.Quaternary == p.Tertiary {
+			t.Errorf("%s: Quaternary must differ from Tertiary (tokens must not match cost)", name)
+		}
 		if p.Dark == (RGB{}) || p.Light == (RGB{}) {
 			t.Errorf("%s: Dark/Light contrast inks must be set", name)
 		}

@@ -27,7 +27,7 @@ func renderFromJSON(r io.Reader, cols int) string {
 	}
 	prof := render.DetectProfile(os.Getenv)
 	sess := anim.Load(s.SessionID, cfg, prof)
-	out := statusline.Render(statusline.Input{
+	in := statusline.Input{
 		Session: s,
 		Git:     git.Lookup(s.SessionID, s.Dir()),
 		Config:  cfg,
@@ -35,7 +35,13 @@ func renderFromJSON(r io.Reader, cols int) string {
 		Profile: prof,
 		Now:     time.Now(),
 		Anim:    sess,
-	})
+	}
+	if s.TranscriptPath != "" && contains(cfg.Order, "tokens") {
+		if tk, terr := session.SessionTokens(s.TranscriptPath); terr == nil {
+			in.SessionTokens = &tk
+		}
+	}
+	out := statusline.Render(in)
 	sess.Save()
 	return out
 }
