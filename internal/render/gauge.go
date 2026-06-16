@@ -27,9 +27,9 @@ func StateFor(pct float64, warn, crit int) State {
 	}
 }
 
-// Gauge renders a bar like "▓▓▓░░░░░ 42%" plus its threshold state.
+// GaugeBar renders just the filled/empty bar like "▓▓▓░░░░░" (no label).
 // pct is clamped to [0,100]. When ascii is true it uses '#'/'-'.
-func Gauge(pct float64, width, warn, crit int, ascii bool) (string, State) {
+func GaugeBar(pct float64, width int, ascii bool) string {
 	if pct < 0 {
 		pct = 0
 	}
@@ -44,6 +44,22 @@ func Gauge(pct float64, width, warn, crit int, ascii bool) (string, State) {
 	if ascii {
 		full, empty = "#", "-"
 	}
-	bar := strings.Repeat(full, filled) + strings.Repeat(empty, width-filled)
-	return fmt.Sprintf("%s %d%%", bar, int(pct+0.5)), StateFor(pct, warn, crit)
+	return strings.Repeat(full, filled) + strings.Repeat(empty, width-filled)
+}
+
+// Gauge renders a bar like "▓▓▓░░░░░ 42%" plus its threshold state.
+// pct is clamped to [0,100]. When ascii is true it uses '#'/'-'.
+func Gauge(pct float64, width, warn, crit int, ascii bool) (string, State) {
+	return fmt.Sprintf("%s %d%%", GaugeBar(pct, width, ascii), int(clampPct(pct)+0.5)), StateFor(pct, warn, crit)
+}
+
+// clampPct clamps a percentage to [0,100] for display rounding.
+func clampPct(pct float64) float64 {
+	if pct < 0 {
+		return 0
+	}
+	if pct > 100 {
+		return 100
+	}
+	return pct
 }

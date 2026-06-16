@@ -46,7 +46,7 @@ func TestRenderSingleLine(t *testing.T) {
 		Now:     fixedNow,
 	}
 	got := Render(in)
-	want := "cosmobar · main +1 ~2 · Opus · ▓▓▓░░░░░ 42% · $0.12 · 14:32"
+	want := "cosmobar · main +1 ~2 · Opus · ▓▓▓░░░░░ 84k/200k (42%) · $0.12 ($0.60/hr) · 14:32"
 	if got != want {
 		t.Errorf("\n got: %q\nwant: %q", got, want)
 	}
@@ -57,12 +57,12 @@ func TestRenderWrapsTwoRows(t *testing.T) {
 		Session: load(t, "heavy.json"),
 		Git:     git.Status{InRepo: true, Branch: "main", Staged: 1, Modified: 2},
 		Config:  config.Default(),
-		Cols:    40,
+		Cols:    50,
 		Profile: render.ProfileNone,
 		Now:     fixedNow,
 	}
 	got := Render(in)
-	want := "cosmobar · main +1 ~2 · Opus\n▓▓▓░░░░░ 42% · $0.12 · 14:32"
+	want := "cosmobar · main +1 ~2 · Opus\n▓▓▓░░░░░ 84k/200k (42%) · $0.12 ($0.60/hr) · 14:32"
 	if got != want {
 		t.Errorf("\n got: %q\nwant: %q", got, want)
 	}
@@ -184,7 +184,7 @@ func TestRenderNilAnimUnchanged(t *testing.T) {
 		Profile: render.ProfileNone,
 		Now:     fixedNow,
 	}
-	want := "cosmobar · main +1 ~2 · Opus · ▓▓▓░░░░░ 42% · $0.12 · 14:32"
+	want := "cosmobar · main +1 ~2 · Opus · ▓▓▓░░░░░ 84k/200k (42%) · $0.12 ($0.60/hr) · 14:32"
 	if got := Render(in); got != want {
 		t.Errorf("\n got: %q\nwant: %q", got, want)
 	}

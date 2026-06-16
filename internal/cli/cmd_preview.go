@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bytes"
@@ -79,6 +79,16 @@ func renderPreview(cfg config.Config, cols int, now time.Time) string {
 		cols = 100
 	}
 	s, _ := session.Parse(bytes.NewReader(mockSession))
+	// resets_at is absent from the static mock JSON; inject future resets
+	// relative to now so previews showcase the rate-limit countdown.
+	if s.RateLimits != nil {
+		if s.RateLimits.FiveHour != nil {
+			s.RateLimits.FiveHour.ResetsAt = now.Add(2*time.Hour + 30*time.Minute).Unix()
+		}
+		if s.RateLimits.SevenDay != nil {
+			s.RateLimits.SevenDay.ResetsAt = now.Add(72 * time.Hour).Unix()
+		}
+	}
 	mockTokens := session.TokenUsage{Input: 210_000, Output: 38_000}
 	return statusline.Render(statusline.Input{
 		Session:       s,

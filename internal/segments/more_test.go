@@ -119,6 +119,40 @@ func TestRateLimitsSegment(t *testing.T) {
 	}
 }
 
+func TestRateLimitsCountdown(t *testing.T) {
+	r, _ := Get("rate_limits")
+	now := time.Date(2026, 6, 14, 14, 32, 0, 0, time.UTC)
+	s := &session.Session{RateLimits: &session.RateLimits{
+		FiveHour: &session.RateWindow{UsedPercentage: 31, ResetsAt: now.Add(2*time.Hour + 30*time.Minute).Unix()},
+		SevenDay: &session.RateWindow{UsedPercentage: 58, ResetsAt: now.Add(72 * time.Hour).Unix()},
+	}}
+	c := config.Default()
+	c.RateLimits.Show = true
+	seg, ok := (&Context{Session: s, Config: c, Now: now}).render(t, r)
+	if !ok || seg.Text != "5h 31% (2h30m left) 7d 58% (3d left)" {
+		t.Errorf("countdown = %q", seg.Text)
+	}
+
+	// a window without resets_at shows just the percentage.
+	s2 := &session.Session{RateLimits: &session.RateLimits{
+		FiveHour: &session.RateWindow{UsedPercentage: 10},
+	}}
+	c.RateLimits.Window = "5h"
+	seg, _ = (&Context{Session: s2, Config: c, Now: now}).render(t, r)
+	if seg.Text != "5h 10%" {
+		t.Errorf("no resets_at = %q", seg.Text)
+	}
+
+	// a reset already in the past is omitted (no negative countdown).
+	s3 := &session.Session{RateLimits: &session.RateLimits{
+		FiveHour: &session.RateWindow{UsedPercentage: 10, ResetsAt: now.Add(-time.Hour).Unix()},
+	}}
+	seg, _ = (&Context{Session: s3, Config: c, Now: now}).render(t, r)
+	if seg.Text != "5h 10%" {
+		t.Errorf("past reset = %q", seg.Text)
+	}
+}
+
 func TestDurationSegment(t *testing.T) {
 	r, _ := Get("duration")
 	s := &session.Session{}
@@ -216,6 +250,42 @@ func TestContextCompactInBackgroundStyle(t *testing.T) {
 	seg, _ = (&Context{Session: s, Config: c, Profile: render.ProfileNone}).render(t, r)
 	if seg.Text == "63%" {
 		t.Errorf("NO_COLOR should keep the bar, got %q", seg.Text)
+	}
+}
+
+func TestContextShowsAbsoluteTokens(t *testing.T) {
+	r, _ := Get("context")
+	pct := 63.0
+	s := &session.Session{}
+	s.ContextWindow.UsedPercentage = &pct
+	s.ContextWindow.ContextWindowSize = 200000
+
+	// lean style keeps the gauge bar and adds used/total (percent).
+	seg, ok := (&Context{Session: s, Config: config.Default(), Profile: render.ProfileTrueColor}).render(t, r)
+	if !ok {
+		t.Fatal("context should show")
+	}
+	if !strings.Contains(seg.Text, "126k/200k (63%)") {
+		t.Errorf("lean context should show absolute tokens, got %q", seg.Text)
+	}
+	if !strings.Contains(seg.Text, "▓") {
+		t.Errorf("lean context should keep the gauge bar, got %q", seg.Text)
+	}
+
+	// blocks style drops the bar but still shows the tokens readout.
+	c := config.Default()
+	c.Style = "blocks"
+	seg, _ = (&Context{Session: s, Config: c, Profile: render.ProfileTrueColor}).render(t, r)
+	if seg.Text != "126k/200k (63%)" {
+		t.Errorf("blocks context = %q, want compact tokens", seg.Text)
+	}
+
+	// without a window size, fall back to the bare percentage.
+	s2 := &session.Session{}
+	s2.ContextWindow.UsedPercentage = &pct
+	seg, _ = (&Context{Session: s2, Config: c, Profile: render.ProfileTrueColor}).render(t, r)
+	if seg.Text != "63%" {
+		t.Errorf("no window size should fall back to %q, got %q", "63%", seg.Text)
 	}
 }
 

@@ -23,7 +23,7 @@ Never point the Claude Code `statusLine` command at `go run .` — it recompiles
 
 ## Architecture
 
-**Render pipeline (the spine).** `cmd_print.go:renderFromJSON` is the testable core: it parses stdin (`session.Parse`), loads TOML config (`config.Load`/`config.DefaultPath`), detects the terminal `render.Profile`, does one `git` call (cached per session ~1s in the OS temp dir via `git.Lookup`; everything else comes from the stdin JSON), and hands everything to `statusline.Render` as a fully-injected `statusline.Input` (Git, Cols, Profile, Now are all passed in, so the render is deterministic and unit-testable). `cosmobar preview` (`cmd_preview.go`) reuses this **exact same pipeline** with mocked session/git data — preview output is guaranteed to match the live line.
+**Render pipeline (the spine).** `internal/cli/cmd_print.go:renderFromJSON` is the testable core: it parses stdin (`session.Parse`), loads TOML config (`config.Load`/`config.DefaultPath`), detects the terminal `render.Profile`, does one `git` call (cached per session ~1s in the OS temp dir via `git.Lookup`; everything else comes from the stdin JSON), and hands everything to `statusline.Render` as a fully-injected `statusline.Input` (Git, Cols, Profile, Now are all passed in, so the render is deterministic and unit-testable). `cosmobar preview` (`internal/cli/cmd_preview.go`) reuses this **exact same pipeline** with mocked session/git data — preview output is guaranteed to match the live line.
 
 **Segments are a self-registering plugin registry.** Each segment lives in `internal/segments/<name>.go`, implements `Renderer` (`Name()` + `Render(ctx *Context) (Segment, bool)` where `ok=false` hides it), and calls `register(...)` in an `init()`. `statusline.Render` walks `config.Order`, looks each name up via `segments.Get`, and collects the shown segments. To add a segment: create the file, register it, add a matching entry to the `catalog` in `catalog.go`, and add a table test.
 
@@ -37,11 +37,11 @@ Never point the Claude Code `statusLine` command at `go run .` — it recompiles
 
 **Animation is a visual overlay, stateful across refreshes.** `internal/anim` persists per-session segment values to disk (`anim.Load`/`Save`). When a segment's signature changes between refreshes, `animateSegment` replaces its `Part` texts with a scramble frame (`anim.Frame`) for the transition — running for `config.Animation.DurationMs`, with the flavor picked from `Animation.Variants` (`glitch`/`decode`/`scatter`) — preserving each part's width and color. It only animates while Claude Code actively refreshes; otherwise it settles to the final value. `cosmobar preview --animate` drives it standalone.
 
-**`config` vs `settings` are different files.** `internal/config` is cosmobar's own TOML (`~/.config/cosmobar/config.toml`, honoring `COSMOBAR_CONFIG`/`XDG_CONFIG_HOME`). `internal/settings` reads/writes Claude Code's `~/.claude/settings.json` to wire/unwire the `statusLine` block (always writing a `.bak` first). `cmd_init.go`/`cmd_uninstall.go` are the wire/unwire entry points.
+**`config` vs `settings` are different files.** `internal/config` is cosmobar's own TOML (`~/.config/cosmobar/config.toml`, honoring `COSMOBAR_CONFIG`/`XDG_CONFIG_HOME`). `internal/settings` reads/writes Claude Code's `~/.claude/settings.json` to wire/unwire the `statusLine` block (always writing a `.bak` first). `internal/cli/cmd_init.go`/`cmd_uninstall.go` are the wire/unwire entry points.
 
-## Commands map (`main.go:run`)
+## Commands map (`internal/cli/cli.go:Run`)
 
-`main.go` dispatches the first arg to a `cmd*` function; default (no/`-`-prefixed arg) is `print`. Each `cmd_<x>.go` is a thin CLI wrapper around testable core logic (e.g. `renderFromJSON`, `installSkill`, `assetURL`/`extractBinary`). `cosmobar upgrade` self-updates from the latest GitHub Release: download tarball + `checksums.txt`, verify sha256, extract `cosmobar`, atomically replace the running binary.
+Root `main.go` is a thin wrapper: it owns the ldflags-injected `version` and calls `cli.Run(version, os.Args[1:])`. The command package lives in `internal/cli` (`package cli`): `cli.Run` dispatches the first arg to a `cmd*` function; default (no/`-`-prefixed arg) is `print`. Each `internal/cli/cmd_<x>.go` is a thin CLI wrapper around testable core logic (e.g. `renderFromJSON`, `installSkill`, `assetURL`/`extractBinary`). The two `go:embed` assets (`mock-session.json`, `skill/SKILL.md`) live under `internal/cli/assets/`. `cosmobar upgrade` self-updates from the latest GitHub Release: `cosmobar upgrade` self-updates from the latest GitHub Release: download tarball + `checksums.txt`, verify sha256, extract `cosmobar`, atomically replace the running binary.
 
 ## Releasing
 
