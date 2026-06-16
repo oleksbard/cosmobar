@@ -79,7 +79,14 @@ overrides just that field):
 cosmobar preview --theme nord --style blocks --caps soft --order git,model,context,lines
 # --cols --theme --style --caps --glyphs --clock --rate-window --order --config
 # add --animate to watch value changes scramble
+# add --gallery to print a spread of example presets (all themes + varied widget sets)
 ```
+
+`--gallery` prints a labeled spread across all themes, styles, and widget sets:
+
+<p align="center">
+  <img src="assets/gallery.png" alt="cosmobar preview --gallery showing the coral/lean, nord/tick, catppuccin/blocks, and gruvbox/blocks presets">
+</p>
 
 ## Commands
 
@@ -89,7 +96,7 @@ cosmobar preview --theme nord --style blocks --caps soft --order git,model,conte
 | `cosmobar init` | Wire into `settings.json`, write config, install the setup skill. Flags: `--theme --order --clock --glyphs --style --caps --rate-window --animate --force --no-skill`. |
 | `cosmobar install-skill` | Install the `/cosmobar` guided-setup skill into `~/.claude/skills/`. |
 | `cosmobar segments [--json]` | List all available segments. |
-| `cosmobar preview` | Render a mock session locally. Flags: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config --animate`. |
+| `cosmobar preview` | Render a mock session locally. Flags: `--cols --theme --style --caps --glyphs --clock --rate-window --order --config --animate --gallery`. |
 | `cosmobar themes` | List built-in themes. |
 | `cosmobar doctor` | Offline diagnostics. |
 | `cosmobar upgrade [--check]` | Self-update from the latest GitHub Release. |
