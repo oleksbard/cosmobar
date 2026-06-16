@@ -160,6 +160,30 @@ func renderGallery(o previewOpts) string {
 		fmt.Fprintf(&b, "%s · %s\n", p.theme, p.style)
 		b.WriteString(renderPreview(cfg, o.cols, previewClock))
 	}
+	b.WriteString("\n\n")
+	b.WriteString(renderWidgetCatalog(o))
+	return b.String()
+}
+
+// renderWidgetCatalog renders every catalog segment on its own labeled line,
+// all in the default theme and style — a reference for what each widget looks
+// like in isolation.
+func renderWidgetCatalog(o previewOpts) string {
+	def := config.Default()
+	var b strings.Builder
+	fmt.Fprintf(&b, "all widgets · %s · %s\n", def.Theme, def.Style)
+	for i, m := range segments.Catalog() {
+		cfg := config.Default()
+		cfg.Order = []string{m.Name}
+		cfg.RateLimits.Show = true // so rate_limits renders here too
+		if o.glyphs != "" {
+			cfg.Glyphs = o.glyphs
+		}
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		fmt.Fprintf(&b, "%-13s%s", m.Name, renderPreview(cfg, o.cols, previewClock))
+	}
 	return b.String()
 }
 

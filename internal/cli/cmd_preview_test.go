@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/oleksbard/cosmobar/internal/config"
 	"github.com/oleksbard/cosmobar/internal/segments"
 )
 
@@ -87,6 +88,41 @@ func TestGalleryEverythingCoversCatalog(t *testing.T) {
 		if everything.order[i] != m.Name {
 			t.Errorf("Everything[%d] = %q, want catalog order %q", i, everything.order[i], m.Name)
 		}
+	}
+}
+
+func TestGalleryListsEveryWidget(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	out := renderGallery(previewOpts{cols: 120})
+
+	// A reference section renders each catalog widget on its own labeled line.
+	if !strings.Contains(out, "all widgets") {
+		t.Fatalf("gallery should include an 'all widgets' section:\n%s", out)
+	}
+	for _, m := range segments.Catalog() {
+		if !strings.Contains(out, m.Name) {
+			t.Errorf("widget reference should label %q:\n%s", m.Name, out)
+		}
+	}
+	// Each widget actually renders with the mock data (spot-check a few).
+	for _, want := range []string{"cosmobar", "Opus", "$0.42", "248k tok", "effort high"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("widget reference missing rendered value %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestWidgetCatalogUsesDefaultTheme(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	out := renderWidgetCatalog(previewOpts{cols: 120})
+	def := config.Default()
+	// Header names the default theme/style and every catalog segment appears.
+	if !strings.Contains(out, def.Theme) || !strings.Contains(out, def.Style) {
+		t.Errorf("widget catalog header should name default theme/style %q/%q:\n%s", def.Theme, def.Style, out)
+	}
+	lines := strings.Count(out, "\n")
+	if lines < len(segments.Catalog()) {
+		t.Errorf("expected at least one line per widget (%d), got %d:\n%s", len(segments.Catalog()), lines, out)
 	}
 }
 
