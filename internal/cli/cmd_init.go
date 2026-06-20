@@ -20,6 +20,8 @@ func cmdInit(args []string) int {
 	caps := fs.String("caps", "", "block caps: soft | square")
 	rateWindow := fs.String("rate-window", "", "rate-limit window: both | 5h | 7d")
 	animate := fs.String("animate", "", "value-change animation: on | off")
+	costRollups := fs.String("cost-rollups", "", "cost rollup windows: comma list of today,week,month")
+	blockCost := fs.String("block-cost", "", "show 5h block cost in rate_limits: on | off")
 	force := fs.Bool("force", false, "overwrite an existing config file")
 	noSkill := fs.Bool("no-skill", false, "do not install the Claude Code setup skill")
 	if err := fs.Parse(args); err != nil {
@@ -43,43 +45,7 @@ func cmdInit(args []string) int {
 	fmt.Println("cosmobar: wired statusLine →", sp, "(command:", bin+")")
 
 	// Build a config from the flags layered over the defaults.
-	cfg := config.Default()
-	customized := false
-	if *theme != "" {
-		cfg.Theme = *theme
-		customized = true
-	}
-	if *order != "" {
-		cfg.Order = splitCSV(*order)
-		customized = true
-	}
-	if *clock != "" {
-		cfg.Clock.Format = *clock
-		customized = true
-	}
-	if *glyphs != "" {
-		cfg.Glyphs = *glyphs
-		customized = true
-	}
-	if *style != "" {
-		cfg.Style = *style
-		customized = true
-	}
-	if *caps != "" {
-		cfg.BlockCaps = *caps
-		customized = true
-	}
-	if *rateWindow != "" {
-		cfg.RateLimits.Window = *rateWindow
-		customized = true
-	}
-	if *animate != "" {
-		cfg.Animation.Enabled = *animate == "on"
-		customized = true
-	}
-	// Keep per-segment toggles consistent with the enabled order.
-	cfg.Context.Show = contains(cfg.Order, "context")
-	cfg.RateLimits.Show = contains(cfg.Order, "rate_limits")
+	cfg, customized := buildInitConfig(*theme, *order, *clock, *glyphs, *style, *caps, *rateWindow, *animate, *costRollups, *blockCost)
 
 	cp := config.DefaultPath()
 	_, statErr := os.Stat(cp)
@@ -107,4 +73,55 @@ func cmdInit(args []string) int {
 
 	fmt.Println("cosmobar: done. Restart Claude Code or send a message to see the status line.")
 	return 0
+}
+
+// buildInitConfig layers the init flag values over the defaults and reports
+// whether any flag customized the result. Pure (no I/O) so it is unit-testable.
+func buildInitConfig(theme, order, clock, glyphs, style, caps, rateWindow, animate, costRollups, blockCost string) (config.Config, bool) {
+	cfg := config.Default()
+	customized := false
+	if theme != "" {
+		cfg.Theme = theme
+		customized = true
+	}
+	if order != "" {
+		cfg.Order = splitCSV(order)
+		customized = true
+	}
+	if clock != "" {
+		cfg.Clock.Format = clock
+		customized = true
+	}
+	if glyphs != "" {
+		cfg.Glyphs = glyphs
+		customized = true
+	}
+	if style != "" {
+		cfg.Style = style
+		customized = true
+	}
+	if caps != "" {
+		cfg.BlockCaps = caps
+		customized = true
+	}
+	if rateWindow != "" {
+		cfg.RateLimits.Window = rateWindow
+		customized = true
+	}
+	if animate != "" {
+		cfg.Animation.Enabled = animate == "on"
+		customized = true
+	}
+	if costRollups != "" {
+		cfg.Cost.Rollups = splitCSV(costRollups)
+		customized = true
+	}
+	if blockCost != "" {
+		cfg.RateLimits.ShowBlockCost = blockCost == "on"
+		customized = true
+	}
+	// Keep per-segment toggles consistent with the enabled order.
+	cfg.Context.Show = contains(cfg.Order, "context")
+	cfg.RateLimits.Show = contains(cfg.Order, "rate_limits")
+	return cfg, customized
 }

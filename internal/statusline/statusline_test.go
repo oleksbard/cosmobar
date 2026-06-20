@@ -3,6 +3,7 @@ package statusline
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/oleksbard/cosmobar/internal/render"
 	"github.com/oleksbard/cosmobar/internal/segments"
 	"github.com/oleksbard/cosmobar/internal/session"
+	"github.com/oleksbard/cosmobar/internal/spend"
 )
 
 // animDemoSession returns an always-enabled demo session starting at fixedNow,
@@ -187,5 +189,23 @@ func TestRenderNilAnimUnchanged(t *testing.T) {
 	want := "cosmobar · main +1 ~2 · Opus · ▓▓▓░░░░░ 84k/200k (42%) · $0.12 ($0.60/hr) · 14:32"
 	if got := Render(in); got != want {
 		t.Errorf("\n got: %q\nwant: %q", got, want)
+	}
+}
+
+func TestInputSpendReachesCostSegment(t *testing.T) {
+	cfg := config.Default()
+	cfg.Order = []string{"cost"}
+	s := &session.Session{}
+	s.Cost.TotalCostUSD = 1.00
+	out := Render(Input{
+		Session: s,
+		Config:  cfg,
+		Cols:    120,
+		Profile: render.ProfileNone,
+		Now:     time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC),
+		Spend:   &spend.Rollup{Today: 5.30},
+	})
+	if !strings.Contains(out, "5.30 today") {
+		t.Errorf("rendered line %q missing the today rollup", out)
 	}
 }

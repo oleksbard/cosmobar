@@ -27,16 +27,20 @@ Configure cosmobar by interviewing the user, then apply the result with one comm
    - **Caps — ask ONLY when the chosen style is `blocks`:** `soft` (default) or `square`. For `lean` or `tick`, do **not** ask about caps at all. `AskUserQuestion` can't branch mid-batch, so put **style** in the first batch and send the **caps** question separately afterwards, only if style came back `blocks`.
    - **Animation:** `on` (default) or `off`. When on, a segment's value briefly scrambles through symbols and "decodes" into its new value whenever it changes — purely visual, width-stable. Offer `off` for users who want a completely static bar.
    - **Rate-limit window** (only if `rate_limits` is enabled): `both` (default), `5h`, or `7d`.
+   - **Cost rollups** (only if `cost` is enabled): which cross-session totals the cost segment appends. Any of `today` (default), `week`, `month` — e.g. `today` shows `· $5.30 today`, `today,month` adds `· $118.00 mo`. Default is `today` alone.
+   - **Block cost** (only if `rate_limits` is enabled): `on` (default) or `off`. When on, the 5-hour window shows its spend, e.g. `5h 31% $4.20 (2h30m left)`.
 
 4. **Apply immediately — no preview step, no confirmation prompt.** As soon as the interview answers are in, write the config and wire it. Don't render a preview and don't put up a "shall I apply this?" question — both are just friction, and applying is reversible. This one command writes `~/.config/cosmobar/config.toml` AND wires `~/.claude/settings.json` (backing up the previous file):
    ```
-   cosmobar init --force --theme <THEME> --order <comma,separated,enabled,segments> --clock <24h|12h|off> --glyphs <auto|ascii> --style <lean|tick|blocks> [--caps <soft|square>] --rate-window <both|5h|7d> [--animate <on|off>]
+   cosmobar init --force --theme <THEME> --order <comma,separated,enabled,segments> --clock <24h|12h|off> --glyphs <auto|ascii> --style <lean|tick|blocks> [--caps <soft|square>] --rate-window <both|5h|7d> [--animate <on|off>] [--cost-rollups <today,week,month>] [--block-cost <on|off>]
    ```
    - `--order` is the comma-separated list of the segments the user enabled, in their chosen order.
    - `--force` overwrites any existing config (this is a reconfigure).
    - `--caps` is only relevant when `--style blocks` is used — omit it otherwise.
    - `--rate-window` is only relevant when `rate_limits` is included in `--order`.
    - `--animate on|off` toggles the value-change scramble animation (default on).
+   - `--cost-rollups` is only relevant when `cost` is in `--order` — a comma list of `today`/`week`/`month` (default `today`). Omit to keep the default.
+   - `--block-cost on|off` is only relevant when `rate_limits` is in `--order` — shows the 5h block's spend (default on).
 
 5. **Confirm in one line.** Just tell the user it's applied — it appears at the bottom of Claude Code on their next message, they can re-run `/cosmobar` anytime, or hand-edit `~/.config/cosmobar/config.toml` and check it with `cosmobar preview`. Don't ask follow-up questions.
 

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/oleksbard/cosmobar/internal/config"
 )
 
 // hermeticConfig points COSMOBAR_CONFIG at a nonexistent file so renderFromJSON
@@ -105,5 +107,40 @@ func TestRenderFromJSONRunsWithAnimation(t *testing.T) {
 	out2 := renderFromJSON(strings.NewReader(in), 120)
 	if out1 == "" || out2 == "" {
 		t.Fatalf("empty output: %q / %q", out1, out2)
+	}
+}
+
+func TestNeedSpend(t *testing.T) {
+	cfg := config.Default()
+	cfg.Order = []string{"dir", "model", "clock"}
+	if needSpend(cfg) {
+		t.Error("needSpend should be false without cost/rate_limits")
+	}
+	cfg.Order = []string{"dir", "cost"}
+	if !needSpend(cfg) {
+		t.Error("needSpend should be true when cost is present")
+	}
+	cfg.Order = []string{"rate_limits"}
+	if !needSpend(cfg) {
+		t.Error("needSpend should be true when rate_limits is present")
+	}
+}
+
+func TestRenderFromJSONShowsTodayRollup(t *testing.T) {
+	// A minimal session blob with a cost; the ledger upsert + today sum should
+	// surface a "$… today" suffix on the cost segment. hermeticConfig pins the
+	// default config (whose order includes "cost", so needSpend is true)
+	// regardless of the developer's real config. The ledger itself still uses
+	// the real cache dir, but the assertion only checks the current session's
+	// own contribution, so it is robust to whatever else is in the ledger.
+	hermeticConfig(t)
+	// Remove any stale anim state so the first render is never in a scramble.
+	statePath := filepath.Join(os.TempDir(), "cosmobar-anim-test-rollup-sess")
+	os.Remove(statePath)
+	defer os.Remove(statePath)
+	blob := `{"session_id":"test-rollup-sess","cost":{"total_cost_usd":3.00},"workspace":{"current_dir":"/tmp"}}`
+	out := renderFromJSON(strings.NewReader(blob), 200)
+	if !strings.Contains(out, "today") {
+		t.Errorf("expected a today rollup in output, got %q", out)
 	}
 }

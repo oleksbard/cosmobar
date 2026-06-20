@@ -21,8 +21,13 @@ type DirConfig struct {
 }
 
 type RateLimitsConfig struct {
-	Show   bool   `toml:"show"`
-	Window string `toml:"window"` // both | 5h | 7d
+	Show          bool   `toml:"show"`
+	Window        string `toml:"window"` // both | 5h | 7d
+	ShowBlockCost bool   `toml:"show_block_cost"`
+}
+
+type CostConfig struct {
+	Rollups []string `toml:"rollups"` // any of: today | week | month
 }
 
 type AnimationConfig struct {
@@ -45,6 +50,7 @@ type Config struct {
 	Dir             DirConfig        `toml:"dir"`
 	Context         Toggle           `toml:"context"`
 	RateLimits      RateLimitsConfig `toml:"rate_limits"`
+	Cost            CostConfig       `toml:"cost"`
 	Animation       AnimationConfig  `toml:"animation"`
 }
 
@@ -64,7 +70,8 @@ func Default() Config {
 		Clock:           ClockConfig{Format: "24h"},
 		Dir:             DirConfig{Style: "basename"},
 		Context:         Toggle{Show: true},
-		RateLimits:      RateLimitsConfig{Show: false, Window: "both"},
+		RateLimits:      RateLimitsConfig{Show: false, Window: "both", ShowBlockCost: true},
+		Cost:            CostConfig{Rollups: []string{"today"}},
 		Animation:       AnimationConfig{Enabled: true, DurationMs: 700, Variants: []string{"glitch"}},
 	}
 }

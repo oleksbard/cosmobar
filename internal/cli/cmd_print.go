@@ -11,6 +11,7 @@ import (
 	"github.com/oleksbard/cosmobar/internal/git"
 	"github.com/oleksbard/cosmobar/internal/render"
 	"github.com/oleksbard/cosmobar/internal/session"
+	"github.com/oleksbard/cosmobar/internal/spend"
 	"github.com/oleksbard/cosmobar/internal/statusline"
 )
 
@@ -41,6 +42,16 @@ func renderFromJSON(r io.Reader, cols int) string {
 			in.SessionTokens = &tk
 		}
 	}
+	if needSpend(cfg) {
+		l := spend.Load(in.Now)
+		l.Upsert(s.SessionID, s.Cost.TotalCostUSD)
+		var resetsAt int64
+		if s.RateLimits != nil && s.RateLimits.FiveHour != nil {
+			resetsAt = s.RateLimits.FiveHour.ResetsAt
+		}
+		in.Spend = &spend.Rollup{Today: l.Today(), Week: l.Week(), Month: l.Month(), Block: l.Block(resetsAt)}
+		l.Save()
+	}
 	out := statusline.Render(in)
 	sess.Save()
 	return out
@@ -50,4 +61,10 @@ func cmdPrint(_ []string) int {
 	out := renderFromJSON(os.Stdin, envInt("COLUMNS", 80))
 	fmt.Println(out)
 	return 0
+}
+
+// needSpend reports whether any segment that consumes cross-session cost
+// (cost rollups or the rate_limits block cost) is enabled.
+func needSpend(cfg config.Config) bool {
+	return contains(cfg.Order, "cost") || contains(cfg.Order, "rate_limits")
 }

@@ -26,16 +26,20 @@ func (rateLimitsSeg) Render(ctx *Context) (Segment, bool) {
 	if window == "" {
 		window = "both"
 	}
+	blockCost := 0.0
+	if cfg.ShowBlockCost && ctx.Spend != nil && rl.FiveHour != nil && rl.FiveHour.ResetsAt > 0 {
+		blockCost = ctx.Spend.Block
+	}
 	var parts []string
 	maxPct := -1.0
 	if (window == "both" || window == "5h") && rl.FiveHour != nil {
-		parts = append(parts, rateWindowPart("5h", rl.FiveHour, ctx.Now))
+		parts = append(parts, rateWindowPart("5h", rl.FiveHour, ctx.Now, blockCost))
 		if rl.FiveHour.UsedPercentage > maxPct {
 			maxPct = rl.FiveHour.UsedPercentage
 		}
 	}
 	if (window == "both" || window == "7d") && rl.SevenDay != nil {
-		parts = append(parts, rateWindowPart("7d", rl.SevenDay, ctx.Now))
+		parts = append(parts, rateWindowPart("7d", rl.SevenDay, ctx.Now, 0)) // block cost is a 5h concept
 		if rl.SevenDay.UsedPercentage > maxPct {
 			maxPct = rl.SevenDay.UsedPercentage
 		}
@@ -52,10 +56,14 @@ func (rateLimitsSeg) Render(ctx *Context) (Segment, bool) {
 	}, true
 }
 
-// rateWindowPart formats one window as "5h 31%", appending "(2h30m left)" when
-// the window has a future reset time.
-func rateWindowPart(label string, w *session.RateWindow, now time.Time) string {
+// rateWindowPart formats one window as "5h 31%", appending " $4.20" when a
+// block cost is supplied (5h window only) and "(2h30m left)" when the window
+// has a future reset time.
+func rateWindowPart(label string, w *session.RateWindow, now time.Time, blockCost float64) string {
 	s := fmt.Sprintf("%s %.0f%%", label, w.UsedPercentage)
+	if blockCost >= 0.005 {
+		s += fmt.Sprintf(" $%.2f", blockCost)
+	}
 	if w.ResetsAt > 0 {
 		if left := time.Unix(w.ResetsAt, 0).Sub(now); left > 0 {
 			s += " (" + compactDuration(left) + " left)"

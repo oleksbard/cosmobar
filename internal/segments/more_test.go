@@ -9,6 +9,7 @@ import (
 	"github.com/oleksbard/cosmobar/internal/git"
 	"github.com/oleksbard/cosmobar/internal/render"
 	"github.com/oleksbard/cosmobar/internal/session"
+	"github.com/oleksbard/cosmobar/internal/spend"
 )
 
 func TestGitSegment(t *testing.T) {
@@ -286,6 +287,39 @@ func TestContextShowsAbsoluteTokens(t *testing.T) {
 	seg, _ = (&Context{Session: s2, Config: c, Profile: render.ProfileTrueColor}).render(t, r)
 	if seg.Text != "63%" {
 		t.Errorf("no window size should fall back to %q, got %q", "63%", seg.Text)
+	}
+}
+
+func TestRateLimitsBlockCost(t *testing.T) {
+	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
+	mkCtx := func(showBlock bool, sp *spend.Rollup, resetsAt int64) *Context {
+		cfg := config.Default()
+		cfg.RateLimits.Show = true
+		cfg.RateLimits.ShowBlockCost = showBlock
+		s := &session.Session{RateLimits: &session.RateLimits{
+			FiveHour: &session.RateWindow{UsedPercentage: 31, ResetsAt: resetsAt},
+			SevenDay: &session.RateWindow{UsedPercentage: 58, ResetsAt: resetsAt},
+		}}
+		return &Context{Session: s, Config: cfg, Now: now, Spend: sp}
+	}
+	reset := now.Add(2 * time.Hour).Unix()
+
+	seg, _ := rateLimitsSeg{}.Render(mkCtx(true, &spend.Rollup{Block: 4.20}, reset))
+	if !strings.Contains(seg.Text, "5h 31% $4.20") {
+		t.Errorf("text %q missing 5h block cost", seg.Text)
+	}
+	if strings.Contains(seg.Text, "7d 58% $") {
+		t.Errorf("text %q must not put block cost on the 7d window", seg.Text)
+	}
+
+	seg, _ = rateLimitsSeg{}.Render(mkCtx(false, &spend.Rollup{Block: 4.20}, reset))
+	if strings.Contains(seg.Text, "$4.20") {
+		t.Errorf("ShowBlockCost=false should hide block cost; got %q", seg.Text)
+	}
+
+	seg, _ = rateLimitsSeg{}.Render(mkCtx(true, &spend.Rollup{Block: 4.20}, 0))
+	if strings.Contains(seg.Text, "$4.20") {
+		t.Errorf("absent resets_at should hide block cost; got %q", seg.Text)
 	}
 }
 

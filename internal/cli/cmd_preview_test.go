@@ -147,3 +147,11 @@ func TestAnimateFramesProgress(t *testing.T) {
 		t.Errorf("expected several distinct frames, got %d", len(distinct))
 	}
 }
+
+func TestPreviewShowsCostRollup(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	out := previewRender(previewOpts{cols: 200, order: "cost"})
+	if !strings.Contains(out, "today") {
+		t.Errorf("preview cost segment should show a rollup; got %q", out)
+	}
+}

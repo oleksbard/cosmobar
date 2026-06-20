@@ -7,6 +7,7 @@ import (
 	"github.com/oleksbard/cosmobar/internal/config"
 	"github.com/oleksbard/cosmobar/internal/render"
 	"github.com/oleksbard/cosmobar/internal/session"
+	"github.com/oleksbard/cosmobar/internal/spend"
 )
 
 func ctxWith(s *session.Session, c config.Config, now time.Time) *Context {
@@ -103,5 +104,37 @@ func TestEffectivePartsFallsBackToText(t *testing.T) {
 	multi := Segment{Parts: []Part{{Text: "+1", State: render.StateOK}, {Text: "-2", State: render.StateCrit}}}
 	if len(multi.EffectiveParts()) != 2 {
 		t.Errorf("multi-part should return its parts")
+	}
+}
+
+func TestCostRollupSuffix(t *testing.T) {
+	tests := []struct {
+		name    string
+		cost    float64
+		windows []string
+		spend   *spend.Rollup
+		want    string
+	}{
+		{"today only", 1.00, []string{"today"}, &spend.Rollup{Today: 5.30}, "$1.00 · $5.30 today"},
+		{"today+month", 1.00, []string{"today", "month"}, &spend.Rollup{Today: 5.30, Month: 118.00}, "$1.00 · $5.30 today · $118.00 mo"},
+		{"zero window omitted", 1.00, []string{"today", "week"}, &spend.Rollup{Today: 5.30, Week: 0}, "$1.00 · $5.30 today"},
+		{"nil spend → no suffix", 1.00, []string{"today"}, nil, "$1.00"},
+		{"unknown window ignored", 1.00, []string{"today", "decade"}, &spend.Rollup{Today: 5.30}, "$1.00 · $5.30 today"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.Default()
+			cfg.Cost.Rollups = tt.windows
+			s := &session.Session{}
+			s.Cost.TotalCostUSD = tt.cost // duration 0 → no $/hr suffix
+			ctx := &Context{Session: s, Config: cfg, Spend: tt.spend, Now: time.Now()}
+			seg, ok := costSeg{}.Render(ctx)
+			if !ok {
+				t.Fatal("cost segment hidden unexpectedly")
+			}
+			if seg.Text != tt.want {
+				t.Errorf("cost text = %q, want %q", seg.Text, tt.want)
+			}
+		})
 	}
 }

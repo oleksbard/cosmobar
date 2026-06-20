@@ -10,6 +10,7 @@ import (
 	"github.com/oleksbard/cosmobar/internal/git"
 	"github.com/oleksbard/cosmobar/internal/render"
 	"github.com/oleksbard/cosmobar/internal/session"
+	"github.com/oleksbard/cosmobar/internal/spend"
 )
 
 // Context is everything a segment needs to render.
@@ -20,6 +21,7 @@ type Context struct {
 	Now           time.Time
 	Profile       render.Profile
 	SessionTokens *session.TokenUsage
+	Spend         *spend.Rollup
 }
 
 // Part is one colored fragment of a segment (e.g. the "+12" in a lines count).

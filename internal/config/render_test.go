@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -47,5 +48,38 @@ func TestRenderTOMLRoundTrips(t *testing.T) {
 	}
 	if got.RateLimits.Window != "5h" {
 		t.Errorf("rate window round-trip: %q", got.RateLimits.Window)
+	}
+}
+
+func TestRenderTOMLIncludesCostAndBlockCost(t *testing.T) {
+	c := Default()
+	c.Cost.Rollups = []string{"today", "month"}
+	c.RateLimits.ShowBlockCost = true
+	out := RenderTOML(c)
+
+	if !strings.Contains(out, `[cost]`) || !strings.Contains(out, `rollups = ["today", "month"]`) {
+		t.Errorf("RenderTOML missing [cost] rollups; got:\n%s", out)
+	}
+	if !strings.Contains(out, "show_block_cost = true") {
+		t.Errorf("RenderTOML missing show_block_cost; got:\n%s", out)
+	}
+}
+
+func TestRenderTOMLCostRoundTrips(t *testing.T) {
+	c := Default()
+	c.Cost.Rollups = []string{"today"}
+	tmp := t.TempDir() + "/config.toml"
+	if err := os.WriteFile(tmp, []byte(RenderTOML(c)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Cost.Rollups) != 1 || got.Cost.Rollups[0] != "today" {
+		t.Errorf("round-tripped rollups = %v, want [today]", got.Cost.Rollups)
+	}
+	if !got.RateLimits.ShowBlockCost {
+		t.Error("round-tripped ShowBlockCost = false, want true")
 	}
 }

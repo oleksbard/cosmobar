@@ -31,10 +31,16 @@ func RenderTOML(c Config) string {
 	fmt.Fprintf(&b, "glyphs           = %s\n", q(c.Glyphs))
 	fmt.Fprintf(&b, "style            = %s\n", q(c.Style))
 	fmt.Fprintf(&b, "block_caps       = %s\n\n", q(c.BlockCaps))
+	ro := c.Cost.Rollups
+	qro := make([]string, len(ro))
+	for i, r := range ro {
+		qro[i] = q(r)
+	}
+	fmt.Fprintf(&b, "[cost]\nrollups = [%s]\n\n", strings.Join(qro, ", "))
 	fmt.Fprintf(&b, "[clock]\nformat = %s\n\n", q(c.Clock.Format))
 	fmt.Fprintf(&b, "[dir]\nstyle = %s\n\n", q(c.Dir.Style))
 	fmt.Fprintf(&b, "[context]\nshow = %t\n\n", c.Context.Show)
-	fmt.Fprintf(&b, "[rate_limits]\nshow = %t\nwindow = %s\n", c.RateLimits.Show, q(c.RateLimits.Window))
+	fmt.Fprintf(&b, "[rate_limits]\nshow = %t\nwindow = %s\nshow_block_cost = %t\n", c.RateLimits.Show, q(c.RateLimits.Window), c.RateLimits.ShowBlockCost)
 	// Guard a zero-value Config (variants nil) so a hand-built Config still
 	// renders a usable pool — mirrors the gauge_thresholds fallback above.
 	avs := c.Animation.Variants

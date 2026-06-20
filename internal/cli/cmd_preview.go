@@ -15,6 +15,7 @@ import (
 	"github.com/oleksbard/cosmobar/internal/render"
 	"github.com/oleksbard/cosmobar/internal/segments"
 	"github.com/oleksbard/cosmobar/internal/session"
+	"github.com/oleksbard/cosmobar/internal/spend"
 	"github.com/oleksbard/cosmobar/internal/statusline"
 )
 
@@ -28,6 +29,10 @@ var previewMockGit = git.Status{InRepo: true, Branch: "main", Ahead: 1, Staged: 
 // previewClock is a fixed, illustrative instant shared by the gallery and the
 // animation so showcase output (e.g. the clock segment) is deterministic.
 var previewClock = time.Date(2026, 6, 15, 14, 32, 0, 0, time.UTC)
+
+// previewMockSpend is the fixed, illustrative cross-session cost shown by every
+// preview render so the cost rollups and 5h block cost are demonstrable.
+var previewMockSpend = spend.Rollup{Today: 5.30, Week: 42.10, Month: 118.00, Block: 4.20}
 
 // previewOpts override config fields so a candidate look can be rendered
 // without writing the config file first. Empty/zero fields keep the config's
@@ -98,6 +103,7 @@ func renderPreview(cfg config.Config, cols int, now time.Time) string {
 		Profile:       render.DetectProfile(os.Getenv),
 		Now:           now,
 		SessionTokens: &mockTokens,
+		Spend:         &previewMockSpend,
 	})
 }
 
@@ -215,7 +221,7 @@ func animationFrames(o previewOpts, loops int) []string {
 		for k := 0; k < stepN; k++ {
 			now := start.Add(time.Duration(k) * dur / time.Duration(stepN))
 			frames = append(frames, statusline.Render(statusline.Input{
-				Session: s, Git: previewMockGit, Config: cfg, Cols: cols, Profile: prof, Now: now, Anim: sess,
+				Session: s, Git: previewMockGit, Config: cfg, Cols: cols, Profile: prof, Now: now, Anim: sess, Spend: &previewMockSpend,
 			}))
 		}
 	}
