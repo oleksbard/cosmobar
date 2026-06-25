@@ -20,7 +20,7 @@ func cmdInit(args []string) int {
 	caps := fs.String("caps", "", "block caps: soft | square")
 	rateWindow := fs.String("rate-window", "", "rate-limit window: both | 5h | 7d")
 	animate := fs.String("animate", "", "value-change animation: on | off")
-	costRollups := fs.String("cost-rollups", "", "cost rollup windows: comma list of today,week,month")
+	costRollups := fs.String("cost-rollups", "", "today cost rollup: 'today' to show, empty to hide")
 	blockCost := fs.String("block-cost", "", "show 5h block cost in rate_limits: on | off")
 	force := fs.Bool("force", false, "overwrite an existing config file")
 	noSkill := fs.Bool("no-skill", false, "do not install the Claude Code setup skill")

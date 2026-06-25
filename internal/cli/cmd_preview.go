@@ -32,7 +32,7 @@ var previewClock = time.Date(2026, 6, 15, 14, 32, 0, 0, time.UTC)
 
 // previewMockSpend is the fixed, illustrative cross-session cost shown by every
 // preview render so the cost rollups and 5h block cost are demonstrable.
-var previewMockSpend = spend.Rollup{Today: 5.30, Week: 42.10, Month: 118.00, Block: 4.20}
+var previewMockSpend = spend.Rollup{Today: 5.30, Block: 4.20}
 
 // previewOpts override config fields so a candidate look can be rendered
 // without writing the config file first. Empty/zero fields keep the config's

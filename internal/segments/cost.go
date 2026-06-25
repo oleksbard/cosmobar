@@ -2,7 +2,6 @@ package segments
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/oleksbard/cosmobar/internal/render"
@@ -33,28 +32,20 @@ func (costSeg) Render(ctx *Context) (Segment, bool) {
 	}, true
 }
 
-// rollupSuffix appends " · $X today" / " · $X wk" / " · $X mo" for each enabled
-// window with a non-trivial total. Windows always render in today→week→month
-// order; unknown window names are ignored; values that round to $0.00 are
-// dropped (so a fresh session doesn't show "$0.00 today").
+// rollupSuffix appends " · $X today" when the cost config enables the "today"
+// rollup and there is non-trivial spend today; values that round to $0.00 are
+// dropped (so a fresh session doesn't show "$0.00 today"). Only the today
+// rollup is supported — see internal/spend for why week/month were removed.
 func rollupSuffix(sp *spend.Rollup, windows []string) string {
-	if sp == nil {
+	if sp == nil || sp.Today < 0.005 {
 		return ""
 	}
-	enabled := make(map[string]bool, len(windows))
 	for _, w := range windows {
-		enabled[w] = true
-	}
-	var b strings.Builder
-	add := func(name, label string, v float64) {
-		if enabled[name] && v >= 0.005 {
-			fmt.Fprintf(&b, " · $%.2f %s", v, label)
+		if w == "today" {
+			return fmt.Sprintf(" · $%.2f today", sp.Today)
 		}
 	}
-	add("today", "today", sp.Today)
-	add("week", "wk", sp.Week)
-	add("month", "mo", sp.Month)
-	return b.String()
+	return ""
 }
 
 func init() { register(costSeg{}) }

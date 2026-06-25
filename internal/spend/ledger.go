@@ -1,9 +1,16 @@
 // Package spend maintains a small persistent ledger of per-session cost,
 // keyed by session id, so the status line can show cross-session totals
-// (today / rolling week / calendar month / current 5-hour block). It stores
+// (cost spent today, and cost spent in the current 5-hour block). It stores
 // Claude's own authoritative total_cost_usd per session, so no model-pricing
 // table is needed. The ledger lives in the user cache dir (not the temp dir
 // like anim/git) so daily totals survive a reboot.
+//
+// total_cost_usd is the session's *lifetime cumulative* cost, and Claude Code
+// sessions routinely live for days. So the ledger does NOT report the raw
+// cumulative — it tracks per-session baselines (the cumulative at the start of
+// today, and at the start of the current 5h block) and reports only the delta
+// since each baseline. That way a five-day-old session contributes only what
+// it spent today / this block, never its whole lifetime.
 package spend
 
 import (
@@ -15,16 +22,21 @@ import (
 
 const dayFmt = "2006-01-02"
 
-// entry is one session's last-known cumulative cost and when it was last seen.
+// entry is one session's last-seen cumulative cost plus the baselines used to
+// derive period spend. Today's spend = Cost - DayBaseCost; current-block spend
+// = Cost - BlockBaseCost (when BlockResetsAt matches the live window).
 type entry struct {
-	Cost float64 `json:"cost"`
-	Day  string  `json:"day"` // local calendar date of the last refresh
-	Ts   int64   `json:"ts"`  // unix seconds of the last refresh
+	Cost          float64 `json:"cost"`            // last-seen lifetime cumulative total_cost_usd
+	Day           string  `json:"day"`             // local date of the last refresh
+	DayBaseCost   float64 `json:"day_base"`        // cumulative as of the start of Day
+	BlockBaseCost float64 `json:"block_base"`      // cumulative as of the start of the current block
+	BlockResetsAt int64   `json:"block_resets_at"` // resets_at the block baseline belongs to
+	Ts            int64   `json:"ts"`              // unix seconds of the last refresh (for prune)
 }
 
 // Rollup is the injected, render-ready set of cross-session totals.
 type Rollup struct {
-	Today, Week, Month, Block float64
+	Today, Block float64
 }
 
 // Ledger is the in-memory view of the on-disk ledger plus the instant ("now")
@@ -35,30 +47,81 @@ type Ledger struct {
 	entries map[string]entry
 }
 
-// Upsert records sessionID's current cumulative cost. total_cost_usd is
-// cumulative per session, so the entry is overwritten, not accumulated. A
-// blank session id is ignored.
-func (l *Ledger) Upsert(sessionID string, cost float64) {
+// Upsert records sessionID's current cumulative cost for the current 5h window
+// (resetsAt, 0 if unknown), maintaining the day and block baselines so that
+// only newly-spent cost is attributed to today / this block.
+//
+// On first sight a session is baselined to its current cumulative (we count
+// only spend cosmobar actually observes accruing, never pre-existing lifetime
+// cost). On a day rollover the day baseline advances to the prior cumulative;
+// on a new block (changed resetsAt) the block baseline does the same. A blank
+// session id is ignored.
+func (l *Ledger) Upsert(sessionID string, cost float64, resetsAt int64) {
 	if sessionID == "" {
 		return
 	}
-	l.entries[sessionID] = entry{Cost: cost, Day: l.now.Format(dayFmt), Ts: l.now.Unix()}
+	today := l.now.Format(dayFmt)
+	e, seen := l.entries[sessionID]
+	if !seen {
+		l.entries[sessionID] = entry{
+			Cost:          cost,
+			Day:           today,
+			DayBaseCost:   cost,
+			BlockBaseCost: cost,
+			BlockResetsAt: resetsAt,
+			Ts:            l.now.Unix(),
+		}
+		return
+	}
+	if e.Day != today { // new day → everything so far is "previous days"
+		e.DayBaseCost = e.Cost
+		e.Day = today
+	}
+	if resetsAt != e.BlockResetsAt { // new 5h window → reset the block baseline
+		e.BlockBaseCost = e.Cost
+		e.BlockResetsAt = resetsAt
+	}
+	e.Cost = cost
+	e.Ts = l.now.Unix()
+	l.entries[sessionID] = e
 }
 
-// Today sums the cost of every session last seen on now's local calendar date.
+// Today sums each session's spend on now's local calendar date (its cumulative
+// minus its start-of-day baseline). Sessions last seen on a prior day did not
+// spend today and are skipped.
 func (l *Ledger) Today() float64 {
 	today := l.now.Format(dayFmt)
 	var sum float64
 	for _, e := range l.entries {
 		if e.Day == today {
-			sum += e.Cost
+			if d := e.Cost - e.DayBaseCost; d > 0 {
+				sum += d
+			}
+		}
+	}
+	return sum
+}
+
+// Block sums each session's spend within the current 5-hour window, identified
+// by resetsAt (unix seconds, from rate_limits.five_hour.resets_at): the session's
+// cumulative minus its block baseline, for sessions whose baseline belongs to
+// this same window. Returns 0 when resetsAt is absent.
+func (l *Ledger) Block(resetsAt int64) float64 {
+	if resetsAt <= 0 {
+		return 0
+	}
+	var sum float64
+	for _, e := range l.entries {
+		if e.BlockResetsAt == resetsAt {
+			if d := e.Cost - e.BlockBaseCost; d > 0 {
+				sum += d
+			}
 		}
 	}
 	return sum
 }
 
 // pruneDays bounds the ledger: entries older than this are dropped on load.
-// 35 days keeps a full calendar month of history.
 const pruneDays = 35
 
 // load builds a Ledger from the file at path (empty/missing/corrupt → empty),
@@ -94,47 +157,6 @@ func (l *Ledger) Save() {
 	if data, err := json.Marshal(l.entries); err == nil {
 		_ = os.WriteFile(l.path, data, 0o600)
 	}
-}
-
-// Week sums sessions last seen within the rolling previous 7×24 hours.
-func (l *Ledger) Week() float64 {
-	cutoff := l.now.Add(-7 * 24 * time.Hour).Unix()
-	var sum float64
-	for _, e := range l.entries {
-		if e.Ts >= cutoff {
-			sum += e.Cost
-		}
-	}
-	return sum
-}
-
-// Month sums sessions last seen in now's calendar month (YYYY-MM prefix match).
-func (l *Ledger) Month() float64 {
-	prefix := l.now.Format("2006-01")
-	var sum float64
-	for _, e := range l.entries {
-		if len(e.Day) >= 7 && e.Day[:7] == prefix {
-			sum += e.Cost
-		}
-	}
-	return sum
-}
-
-// Block sums sessions last seen inside the current 5-hour window, which ends at
-// resetsAt (unix seconds, from rate_limits.five_hour.resets_at). Returns 0 when
-// resetsAt is absent.
-func (l *Ledger) Block(resetsAt int64) float64 {
-	if resetsAt <= 0 {
-		return 0
-	}
-	start := resetsAt - 5*60*60
-	var sum float64
-	for _, e := range l.entries {
-		if e.Ts >= start && e.Ts <= resetsAt {
-			sum += e.Cost
-		}
-	}
-	return sum
 }
 
 // ledgerPath returns the on-disk ledger location, or "" if no cache dir.

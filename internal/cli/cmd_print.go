@@ -43,13 +43,13 @@ func renderFromJSON(r io.Reader, cols int) string {
 		}
 	}
 	if needSpend(cfg) {
-		l := spend.Load(in.Now)
-		l.Upsert(s.SessionID, s.Cost.TotalCostUSD)
 		var resetsAt int64
 		if s.RateLimits != nil && s.RateLimits.FiveHour != nil {
 			resetsAt = s.RateLimits.FiveHour.ResetsAt
 		}
-		in.Spend = &spend.Rollup{Today: l.Today(), Week: l.Week(), Month: l.Month(), Block: l.Block(resetsAt)}
+		l := spend.Load(in.Now)
+		l.Upsert(s.SessionID, s.Cost.TotalCostUSD, resetsAt)
+		in.Spend = &spend.Rollup{Today: l.Today(), Block: l.Block(resetsAt)}
 		l.Save()
 	}
 	out := statusline.Render(in)

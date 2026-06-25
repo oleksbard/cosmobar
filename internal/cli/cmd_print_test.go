@@ -5,8 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/oleksbard/cosmobar/internal/config"
+	"github.com/oleksbard/cosmobar/internal/spend"
 )
 
 // hermeticConfig points COSMOBAR_CONFIG at a nonexistent file so renderFromJSON
@@ -127,20 +129,28 @@ func TestNeedSpend(t *testing.T) {
 }
 
 func TestRenderFromJSONShowsTodayRollup(t *testing.T) {
-	// A minimal session blob with a cost; the ledger upsert + today sum should
-	// surface a "$… today" suffix on the cost segment. hermeticConfig pins the
-	// default config (whose order includes "cost", so needSpend is true)
-	// regardless of the developer's real config. The ledger itself still uses
-	// the real cache dir, but the assertion only checks the current session's
-	// own contribution, so it is robust to whatever else is in the ledger.
+	// Fully isolate the ledger from the developer's real cache: os.UserCacheDir
+	// uses $HOME/Library/Caches on macOS and $XDG_CACHE_HOME (or $HOME/.cache)
+	// on Linux, so redirect both. hermeticConfig pins the default config (whose
+	// order includes "cost", so needSpend is true).
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, "cache"))
 	hermeticConfig(t)
-	// Remove any stale anim state so the first render is never in a scramble.
+	// Remove any stale anim state so the single render is never a scramble frame.
 	statePath := filepath.Join(os.TempDir(), "cosmobar-anim-test-rollup-sess")
 	os.Remove(statePath)
 	defer os.Remove(statePath)
-	blob := `{"session_id":"test-rollup-sess","cost":{"total_cost_usd":3.00},"workspace":{"current_dir":"/tmp"}}`
+
+	// Seed a $3.00 baseline for the session, then render at $5.00 cumulative.
+	// today is the delta the binary observed — $2.00 — not the lifetime total.
+	l := spend.Load(time.Now())
+	l.Upsert("test-rollup-sess", 3.00, 0)
+	l.Save()
+
+	blob := `{"session_id":"test-rollup-sess","cost":{"total_cost_usd":5.00},"workspace":{"current_dir":"/tmp"}}`
 	out := renderFromJSON(strings.NewReader(blob), 200)
-	if !strings.Contains(out, "today") {
-		t.Errorf("expected a today rollup in output, got %q", out)
+	if !strings.Contains(out, "$2.00 today") {
+		t.Errorf("expected '$2.00 today' rollup, got %q", out)
 	}
 }

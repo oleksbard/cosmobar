@@ -115,11 +115,13 @@ func TestCostRollupSuffix(t *testing.T) {
 		spend   *spend.Rollup
 		want    string
 	}{
-		{"today only", 1.00, []string{"today"}, &spend.Rollup{Today: 5.30}, "$1.00 · $5.30 today"},
-		{"today+month", 1.00, []string{"today", "month"}, &spend.Rollup{Today: 5.30, Month: 118.00}, "$1.00 · $5.30 today · $118.00 mo"},
-		{"zero window omitted", 1.00, []string{"today", "week"}, &spend.Rollup{Today: 5.30, Week: 0}, "$1.00 · $5.30 today"},
+		{"today shown", 1.00, []string{"today"}, &spend.Rollup{Today: 5.30}, "$1.00 · $5.30 today"},
+		{"today not enabled", 1.00, []string{}, &spend.Rollup{Today: 5.30}, "$1.00"},
+		{"zero today omitted", 1.00, []string{"today"}, &spend.Rollup{Today: 0}, "$1.00"},
+		{"rounds to $0.00 omitted", 1.00, []string{"today"}, &spend.Rollup{Today: 0.004}, "$1.00"},
+		{"rounding boundary kept", 1.00, []string{"today"}, &spend.Rollup{Today: 0.005}, "$1.00 · $0.01 today"},
 		{"nil spend → no suffix", 1.00, []string{"today"}, nil, "$1.00"},
-		{"unknown window ignored", 1.00, []string{"today", "decade"}, &spend.Rollup{Today: 5.30}, "$1.00 · $5.30 today"},
+		{"unknown windows ignored, today still works", 1.00, []string{"decade", "today"}, &spend.Rollup{Today: 5.30}, "$1.00 · $5.30 today"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
